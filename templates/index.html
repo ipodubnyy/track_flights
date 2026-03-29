@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Flight Price Tracker{% endblock %}
+{% block content %}
+<h1>Tracked Routes</h1>
+
+{% if routes %}
+<table>
+    <thead>
+        <tr>
+            <th>Route</th>
+            <th>Departure</th>
+            <th>Return</th>
+            <th>Cabin</th>
+            <th>Airlines / Alliances</th>
+            <th>Travelers</th>
+            <th>Status</th>
+            <th>Latest Price</th>
+            <th>Trend</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for r in routes %}
+        <tr>
+            <td><a href="/route/{{ r.id }}">{{ r.origin }} &rarr; {{ r.destination }}</a></td>
+            <td>{{ r.departure_date }}</td>
+            <td>{{ r.return_date or "-" }}</td>
+            <td>{{ r.cabin_types | join(", ") or "any" }}</td>
+            <td>
+                {% if r.airlines %}{{ r.airlines | join(", ") }}{% endif %}
+                {% if r.airlines and r.alliances %} / {% endif %}
+                {% if r.alliances %}{{ r.alliances | join(", ") }}{% endif %}
+                {% if not r.airlines and not r.alliances %}-{% endif %}
+            </td>
+            <td>{{ r.travelers | join(", ") }}</td>
+            <td>
+                <span class="badge {{ 'badge-active' if r.is_active else 'badge-inactive' }}">
+                    {{ "Active" if r.is_active else "Paused" }}
+                </span>
+            </td>
+            <td>
+                {% if r.latest_prices %}
+                    {{ "%.0f" | format(r.latest_prices[0].price) }} {{ r.latest_prices[0].currency }}
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td>
+                {% if r.latest_prediction %}
+                    <span class="trend trend-{{ r.latest_prediction.trend }}">{{ r.latest_prediction.trend }}</span>
+                {% else %}
+                    -
+                {% endif %}
+            </td>
+            <td class="actions">
+                <button onclick="toggleRoute({{ r.id }})" title="Toggle active/paused">{{ "Pause" if r.is_active else "Resume" }}</button>
+                <button onclick="checkRoute({{ r.id }})" title="Check prices now">Check</button>
+                <button class="btn-danger" onclick="deleteRoute({{ r.id }})" title="Delete route">Delete</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty-state">No routes tracked yet. Add one below.</p>
+{% endif %}
+
+<h2>Add New Route</h2>
+<form id="addForm" onsubmit="return addRoute(event)">
+    <div class="form-grid">
+        <div class="form-group">
+            <label for="origin">Origin (IATA code)</label>
+            <input type="text" id="origin" placeholder="e.g. SFO" maxlength="3" required>
+        </div>
+        <div class="form-group">
+            <label for="destination">Destination (IATA code)</label>
+            <input type="text" id="destination" placeholder="e.g. NRT" maxlength="3" required>
+        </div>
+        <div class="form-group">
+            <label for="departure_date">Departure Date</label>
+            <input type="date" id="departure_date" required>
+        </div>
+        <div class="form-group">
+            <label for="return_date">Return Date</label>
+            <input type="date" id="return_date">
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="is_round_trip" onchange="toggleReturnDate()">
+                Round Trip
+            </label>
+        </div>
+    </div>
+
+    <div class="form-grid">
+        <div class="form-group">
+            <label for="cabin_types">Cabin Types</label>
+            <div class="checkbox-group">
+                <label><input type="checkbox" name="cabin" value="economy_plus"> Economy Plus</label>
+                <label><input type="checkbox" name="cabin" value="premium_economy"> Premium Economy</label>
+                <label><input type="checkbox" name="cabin" value="business"> Business</label>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="airlines">Airlines (IATA codes, comma-separated)</label>
+            <input type="text" id="airlines" placeholder="e.g. UA, LH, NH">
+        </div>
+        <div class="form-group">
+            <label for="alliances">Alliances (comma-separated)</label>
+            <input type="text" id="alliances" placeholder="e.g. Star Alliance, oneworld">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>Travelers</label>
+        <div id="travelers-list">
+            <div class="traveler-row">
+                <label>Age: <input type="number" name="traveler_age" value="30" min="0" max="120"></label>
+                <button type="button" class="btn-small" onclick="removeTraveler(this)">Remove</button>
+            </div>
+        </div>
+        <button type="button" class="btn-small" onclick="addTraveler()">+ Add Traveler</button>
+    </div>
+
+    <button type="submit" class="btn-primary">Add Route</button>
+</form>
+{% endblock %}

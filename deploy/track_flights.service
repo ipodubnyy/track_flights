@@ -1,0 +1,15 @@
+[Unit]
+Description=Flight Price Tracker
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/track_flights
+ExecStart=/opt/track_flights/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+EnvironmentFile=/opt/track_flights/.env
+
+[Install]
+WantedBy=multi-user.target

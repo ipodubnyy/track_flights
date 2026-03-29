@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}{{ route.origin }} → {{ route.destination }} | Flight Tracker{% endblock %}
+{% block content %}
+<p><a href="/">&larr; Back to all routes</a></p>
+
+<h1>{{ route.origin }} &rarr; {{ route.destination }}</h1>
+
+<div class="route-meta">
+    <p><strong>Departure:</strong> {{ route.departure_date }}</p>
+    {% if route.return_date %}<p><strong>Return:</strong> {{ route.return_date }}</p>{% endif %}
+    <p><strong>Type:</strong> {{ "Round Trip" if route.is_round_trip else "One Way" }}</p>
+    <p><strong>Cabin types:</strong> {{ route.cabin_types | join(", ") or "any" }}</p>
+    <p><strong>Airlines:</strong> {{ route.airlines | join(", ") or "any" }}</p>
+    <p><strong>Alliances:</strong> {{ route.alliances | join(", ") or "any" }}</p>
+    <p><strong>Travelers (ages):</strong> {{ route.travelers | join(", ") }}</p>
+    <p><strong>Status:</strong>
+        <span class="badge {{ 'badge-active' if route.is_active else 'badge-inactive' }}">
+            {{ "Active" if route.is_active else "Paused" }}
+        </span>
+    </p>
+</div>
+
+{% if route.latest_prediction %}
+<div class="prediction-card">
+    <h2>Latest Prediction</h2>
+    <div class="prediction-grid">
+        <div>
+            <span class="label">Trend</span>
+            <span class="trend trend-{{ route.latest_prediction.trend }}">{{ route.latest_prediction.trend }}</span>
+        </div>
+        <div>
+            <span class="label">Recommendation</span>
+            <span class="value">{{ route.latest_prediction.buy_recommendation }}</span>
+        </div>
+        <div>
+            <span class="label">Confidence</span>
+            <span class="value">{{ "%.0f%%" | format(route.latest_prediction.confidence * 100) }}</span>
+        </div>
+        {% if route.latest_prediction.predicted_best_buy_date %}
+        <div>
+            <span class="label">Best buy date</span>
+            <span class="value">{{ route.latest_prediction.predicted_best_buy_date }}</span>
+        </div>
+        {% endif %}
+    </div>
+    <p class="prediction-summary">{{ route.latest_prediction.summary }}</p>
+</div>
+{% endif %}
+
+<div class="section">
+    <h2>Price History</h2>
+    {% if all_prices %}
+    <div class="chart-container">
+        <canvas id="priceChart" height="250"></canvas>
+    </div>
+    <table>
+        <thead>
+            <tr><th>Date</th><th>Airline</th><th>Cabin</th><th>Price</th><th>Currency</th></tr>
+        </thead>
+        <tbody>
+            {% for p in all_prices %}
+            <tr>
+                <td>{{ p.fetched_at.strftime('%Y-%m-%d %H:%M') if p.fetched_at else 'N/A' }}</td>
+                <td>{{ p.airline }}</td>
+                <td>{{ p.cabin_type }}</td>
+                <td>{{ "%.2f" | format(p.price) }}</td>
+                <td>{{ p.currency }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No price data yet. Click "Check Prices Now" to fetch.</p>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>Prediction History</h2>
+    {% if all_predictions %}
+    <table>
+        <thead>
+            <tr><th>Date</th><th>Trend</th><th>Summary</th><th>Recommendation</th><th>Confidence</th></tr>
+        </thead>
+        <tbody>
+            {% for pr in all_predictions %}
+            <tr>
+                <td>{{ pr.created_at.strftime('%Y-%m-%d %H:%M') if pr.created_at else 'N/A' }}</td>
+                <td><span class="trend trend-{{ pr.trend }}">{{ pr.trend }}</span></td>
+                <td>{{ pr.summary }}</td>
+                <td>{{ pr.buy_recommendation }}</td>
+                <td>{{ "%.0f%%" | format(pr.confidence * 100) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No predictions yet.</p>
+    {% endif %}
+</div>
+
+<div class="actions-bar">
+    <button class="btn-primary" onclick="fetch('/api/routes/{{ route.id }}/check', {method:'POST'}).then(() => location.reload())">
+        Check Prices Now
+    </button>
+    <button onclick="fetch('/api/routes/{{ route.id }}/toggle', {method:'PATCH'}).then(() => location.reload())">
+        {{ "Pause" if route.is_active else "Resume" }}
+    </button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const prices = {{ all_prices | tojson }};
+    if (!prices || prices.length === 0) return;
+
+    const sorted = prices.slice().reverse();
+    const labels = sorted.map(p => {
+        const d = new Date(p.fetched_at);
+        return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    });
+    const data = sorted.map(p => p.price);
+
+    new Chart(document.getElementById('priceChart'), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Price (' + (sorted[0].currency || 'USD') + ')',
+                data: data,
+                borderColor: '#2563eb',
+                backgroundColor: 'rgba(37,99,235,0.1)',
+                fill: true,
+                tension: 0.3,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: true } },
+            scales: { y: { beginAtZero: false } }
+        }
+    });
+});
+</script>
+{% endblock %}
