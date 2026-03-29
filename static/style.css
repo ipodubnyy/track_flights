@@ -26,6 +26,10 @@ nav { background: #0f172a; padding: 0 24px; height: 56px; display: flex; align-i
 .user-menu-btn svg { opacity: 0.6; }
 .user-dropdown { display: none; position: absolute; right: 0; top: 100%; margin-top: 4px; background: var(--surface); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); min-width: 160px; overflow: hidden; z-index: 100; }
 .user-menu.open .user-dropdown { display: block; }
+.dropdown-lang { display: flex; gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.dropdown-lang .lang-btn { flex: 1; padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--muted); font-size: 0.78rem; cursor: pointer; font-family: inherit; text-align: center; }
+.dropdown-lang .lang-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.dropdown-lang .lang-btn:hover:not(.active) { background: #f1f5f9; }
 .user-dropdown a { display: block; padding: 10px 16px; font-size: 0.82rem; color: var(--text); text-decoration: none; }
 .user-dropdown a:hover { background: #f1f5f9; }
 .dropdown-danger { color: var(--danger) !important; }

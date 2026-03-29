@@ -6,17 +6,13 @@
     <title>{% block title %}{{ t('app_name') }}{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=2">
+    <link rel="stylesheet" href="/static/style.css?v=3">
 </head>
 <body>
     <nav>
         <a href="/" class="logo">{{ t('app_name') }}</a>
         {% if user %}
         <div class="nav-right">
-            <div class="lang-toggle">
-                <button class="lang-btn{% if lang == 'en' %} active{% endif %}" onclick="setLanguage('en')">EN</button>
-                <button class="lang-btn{% if lang == 'ru' %} active{% endif %}" onclick="setLanguage('ru')">RU</button>
-            </div>
             <div class="currency-toggle">
                 <button class="currency-btn{% if currency == 'USD' %} active{% endif %}" onclick="setCurrency('USD')">$ USD</button>
                 <button class="currency-btn{% if currency == 'RUB' %} active{% endif %}" onclick="setCurrency('RUB')">&#8381; RUB</button>
@@ -28,6 +24,10 @@
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M3 5l3 3 3-3"/></svg>
                 </button>
                 <div class="user-dropdown">
+                    <div class="dropdown-lang">
+                        <button class="lang-btn{% if lang == 'en' %} active{% endif %}" onclick="setLanguage('en')">English</button>
+                        <button class="lang-btn{% if lang == 'ru' %} active{% endif %}" onclick="setLanguage('ru')">Русский</button>
+                    </div>
                     <a href="#" onclick="event.preventDefault();fetch('/logout',{method:'POST',headers:{'x-csrf-token':getCsrfToken()}}).then(function(){location.href='/login'})">{{ t('sign_out') }}</a>
                     <a href="#" class="dropdown-danger" onclick="event.preventDefault();if(confirm('{{ t("delete_profile_confirm") }}')){fetch('/profile',{method:'DELETE',headers:{'x-csrf-token':getCsrfToken()}}).then(function(){location.href='/login'})}">{{ t('delete_profile') }}</a>
                 </div>
@@ -42,6 +42,6 @@
         <p>{% if currency == 'RUB' %}{{ t('prices_shown_in_rub') }}{% else %}{{ t('prices_shown_in_usd') }}{% endif %}</p>
     </footer>
     <script>var APP_LANG = '{{ lang }}';</script>
-    <script src="/static/app.js?v=2"></script>
+    <script src="/static/app.js?v=3"></script>
 </body>
 </html>
