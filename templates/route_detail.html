@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% macro fmt_price(amount, cur) -%}
     {%- set sym = CURRENCY_SYMBOLS.get(cur, ("$", "before")) -%}
-    {%- if sym[1] == "before" -%}{{ sym[0] }}{{ "%.0f" | format(amount) }}{%- else -%}{{ "%.0f" | format(amount) }}&nbsp;{{ sym[0] }}{%- endif -%}
+    {%- if sym[1] == "before" -%}{{ sym[0] }}{{ "{:,.0f}".format(amount) }}{%- else -%}{{ "{:,.0f}".format(amount) }}&nbsp;{{ sym[0] }}{%- endif -%}
 {%- endmacro %}
 {% macro cabin_name(key) %}{{ CABIN_DISPLAY_NAMES.get(key, key) }}{% endmacro %}
 
@@ -19,41 +19,65 @@
         <div><span class="label">Departure</span><span class="value">{{ route.departure_date }}</span></div>
         {% if route.return_date %}<div><span class="label">Return</span><span class="value">{{ route.return_date }}</span></div>{% endif %}
         <div><span class="label">Type</span><span class="value">{{ "Round Trip" if route.is_round_trip else "One Way" }}</span></div>
-        <div><span class="label">Cabin</span><span class="value">{{ route.cabin_types | map('replace', 'economy_plus', 'Economy Plus') | map('replace', 'premium_economy', 'Premium Economy') | map('replace', 'business', 'Business') | map('replace', 'economy', 'Economy') | map('replace', 'first', 'First') | join(", ") or "Any" }}</span></div>
+        <div><span class="label">Cabin</span><span class="value">{% for c in route.cabin_types %}{{ cabin_name(c) }}{% if not loop.last %}, {% endif %}{% endfor %}{% if not route.cabin_types %}Any{% endif %}</span></div>
         <div><span class="label">Airlines</span><span class="value">{{ route.airlines | join(", ") or "Any" }}</span></div>
         <div><span class="label">Alliances</span><span class="value">{{ route.alliances | join(", ") or "Any" }}</span></div>
         <div><span class="label">Travelers</span><span class="value">{{ route.travelers | join(", ") }} (ages)</span></div>
     </div>
 </div>
 
+{% set primary_dep = route.departure_date.isoformat() if route.departure_date else '' %}
+
 {% if route.latest_prices %}
 <div class="section">
     <h2>Current Prices</h2>
-    <p class="section-subtitle">Total for all travelers. Your requested date is highlighted.</p>
+
+    {# Primary date prices #}
     <div class="current-prices-grid">
-        {% for p in route.latest_prices %}
-        <div class="price-card{% if p.departure_date and p.departure_date.isoformat() == route.departure_date.isoformat() %} price-card-exact{% endif %}">
-            <div class="price-card-date">{{ p.departure_date }}</div>
+        {% for p in route.latest_prices if p.departure_date and p.departure_date.isoformat() == primary_dep %}
+        <div class="price-card price-card-exact">
+            <div class="price-card-date">{{ p.departure_date }} (requested)</div>
             <div class="price-card-amount">{{ fmt_price(p.price, currency) }}</div>
             <div class="price-card-detail">{{ cabin_name(p.cabin_type) }} &middot; {{ p.airline }}</div>
+            {% if p.flight_info %}<div class="price-card-flight">{{ p.flight_info }}</div>{% endif %}
         </div>
         {% endfor %}
     </div>
-</div>
-{% endif %}
 
-{% if route.latest_prediction %}
-<div class="prediction-card card">
-    <h2>AI Prediction</h2>
-    <div class="prediction-grid">
-        <div><span class="label">Trend</span><span class="trend trend-{{ route.latest_prediction.trend }}">{{ route.latest_prediction.trend | capitalize }}</span></div>
-        <div><span class="label">Recommendation</span><span class="value pred-rec">{{ route.latest_prediction.buy_recommendation }}</span></div>
-        <div><span class="label">Confidence</span><span class="value">{{ "%.0f%%" | format(route.latest_prediction.confidence * 100) }}</span></div>
+    {# Prediction inline #}
+    {% if route.latest_prediction %}
+    <div class="inline-prediction">
+        <span class="trend trend-{{ route.latest_prediction.trend }}">{{ route.latest_prediction.trend | capitalize }}</span>
+        <span class="trend-rec">&mdash; {{ route.latest_prediction.buy_recommendation }}</span>
+        <span class="trend-confidence">({{ "%.0f%%" | format(route.latest_prediction.confidence * 100) }} confidence)</span>
         {% if route.latest_prediction.predicted_best_buy_date %}
-        <div><span class="label">Best Buy Date</span><span class="value">{{ route.latest_prediction.predicted_best_buy_date }}</span></div>
+        <span class="trend-rec">&middot; Best buy: {{ route.latest_prediction.predicted_best_buy_date }}</span>
         {% endif %}
     </div>
+    {% if route.latest_prediction.summary %}
     <p class="prediction-summary">{{ route.latest_prediction.summary }}</p>
+    {% endif %}
+    {% endif %}
+
+    {# Nearby date prices in smaller display #}
+    {% set nearby = [] %}
+    {% for p in route.latest_prices if not p.departure_date or p.departure_date.isoformat() != primary_dep %}
+        {% if nearby.append(p) %}{% endif %}
+    {% endfor %}
+    {% if nearby %}
+    <div class="nearby-section">
+        <h3 class="nearby-heading">Nearby dates</h3>
+        <div class="nearby-prices-grid">
+            {% for p in nearby %}
+            <div class="nearby-card">
+                <span class="nearby-date">{{ p.departure_date }}</span>
+                <span class="nearby-amount">{{ fmt_price(p.price, currency) }}</span>
+                <span class="nearby-detail">{{ cabin_name(p.cabin_type) }} &middot; {{ p.airline }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endif %}
 
@@ -66,16 +90,17 @@
     <div class="table-wrap card">
     <table>
         <thead>
-            <tr><th>Checked</th><th>Departure</th><th>Airline</th><th>Cabin</th><th>Total Price</th></tr>
+            <tr><th>Checked</th><th>Departure</th><th>Airline</th><th>Cabin</th><th>Total Price</th><th>Flight</th></tr>
         </thead>
         <tbody>
             {% for p in all_prices %}
-            <tr>
+            <tr{% if p.departure_date and p.departure_date|string == primary_dep %} class="row-primary"{% endif %}>
                 <td>{{ p.fetched_at.strftime('%Y-%m-%d %H:%M') if p.fetched_at else 'N/A' }}</td>
                 <td>{{ p.departure_date or 'N/A' }}</td>
                 <td>{{ p.airline }}</td>
                 <td>{{ cabin_name(p.cabin_type) }}</td>
                 <td class="price-cell">{{ fmt_price(p.price, currency) }}</td>
+                <td class="flight-cell">{{ p.flight_info or '' }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -127,7 +152,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     const data = sorted.map(p => p.price);
     const cur = '{{ currency }}';
-    const sym = cur === 'RUB' ? ' \u20BD' : '$';
     new Chart(document.getElementById('priceChart'), {
         type: 'line',
         data: {
@@ -137,38 +161,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 data: data,
                 borderColor: '#6366f1',
                 backgroundColor: 'rgba(99,102,241,0.08)',
-                fill: true,
-                tension: 0.35,
-                pointRadius: 3,
-                pointBackgroundColor: '#6366f1',
+                fill: true, tension: 0.35, pointRadius: 3, pointBackgroundColor: '#6366f1',
             }]
         },
         options: {
             responsive: true,
             plugins: {
                 legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function(ctx) {
-                            const v = ctx.parsed.y;
-                            return cur === 'RUB' ? v.toLocaleString() + ' \u20BD' : '$' + v.toLocaleString();
-                        }
-                    }
-                }
+                tooltip: { callbacks: { label: function(ctx) { return fmtPrice(ctx.parsed.y, cur); } } }
             },
             scales: {
-                y: {
-                    beginAtZero: false,
-                    ticks: {
-                        callback: function(v) {
-                            return cur === 'RUB' ? v.toLocaleString() + ' \u20BD' : '$' + v.toLocaleString();
-                        }
-                    }
-                },
+                y: { beginAtZero: false, ticks: { callback: function(v) { return fmtPrice(v, cur); } } },
                 x: { display: false }
             }
         }
     });
 });
+function fmtPrice(v, cur) {
+    return cur === 'RUB' ? v.toLocaleString() + ' \u20BD' : '$' + v.toLocaleString();
+}
 </script>
 {% endblock %}

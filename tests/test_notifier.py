@@ -145,3 +145,26 @@ class TestFormatPriceAlert:
         msg = notifier.format_price_alert(route, prices, prediction)
         assert "??" in msg
         assert "0" in msg
+
+    def test_format_with_flight_info_and_departure_date(self):
+        route = MagicMock()
+        route.origin = "JFK"
+        route.destination = "LAX"
+        route.departure_date = date(2026, 6, 15)
+        route.return_date = None
+
+        prices = [
+            {
+                "airline": "UA",
+                "cabin_type": "economy",
+                "price": 400.0,
+                "currency": "USD",
+                "flight_info": "UA123 via ORD",
+                "departure_date": "2026-06-15",
+            },
+        ]
+        prediction = {"trend": "down", "summary": "ok", "buy_recommendation": "wait", "confidence": 0.7}
+        notifier = TelegramNotifier("", "")
+        msg = notifier.format_price_alert(route, prices, prediction)
+        assert "(UA123 via ORD)" in msg
+        assert "[dep 2026-06-15]" in msg

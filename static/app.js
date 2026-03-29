@@ -1,4 +1,11 @@
-/* Currency toggle */
+/* Close user dropdown when clicking outside */
+document.addEventListener('click', function(e) {
+    document.querySelectorAll('.user-menu.open').forEach(function(m) {
+        if (!m.contains(e.target)) m.classList.remove('open');
+    });
+});
+
+/* Currency toggle - changes preference, reloads to show converted prices */
 async function setCurrency(cur) {
     await fetch('/api/currency', {
         method: 'PATCH',
@@ -10,15 +17,17 @@ async function setCurrency(cur) {
 
 /* Helpers */
 function splitField(val) {
-    return val ? val.split(',').map(s => s.trim()).filter(Boolean) : [];
+    return val ? val.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
 }
 
 /* Add route */
 async function addRoute(e) {
     e.preventDefault();
-    const cabins = Array.from(document.querySelectorAll('input[name="cabin"]:checked')).map(cb => cb.value);
-    const ages = Array.from(document.querySelectorAll('#addForm input[name="traveler_age"]')).map(inp => parseInt(inp.value) || 30);
-    const body = {
+    var cabins = [];
+    document.querySelectorAll('#addForm input[name="cabin"]:checked').forEach(function(cb) { cabins.push(cb.value); });
+    var ages = [];
+    document.querySelectorAll('#addForm input[name="traveler_age"]').forEach(function(inp) { ages.push(parseInt(inp.value) || 30); });
+    var body = {
         origin: document.getElementById('origin').value.toUpperCase(),
         destination: document.getElementById('destination').value.toUpperCase(),
         departure_date: document.getElementById('departure_date').value,
@@ -29,7 +38,7 @@ async function addRoute(e) {
         alliances: splitField(document.getElementById('alliances').value),
         travelers: ages,
     };
-    const res = await fetch('/api/routes', {
+    var res = await fetch('/api/routes', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(body),
@@ -40,29 +49,29 @@ async function addRoute(e) {
 
 /* Route actions */
 async function toggleRoute(id) {
-    await fetch(`/api/routes/${id}/toggle`, {method: 'PATCH'});
+    await fetch('/api/routes/' + id + '/toggle', {method: 'PATCH'});
     location.reload();
 }
 
 async function checkRoute(id) {
-    const btn = event.target;
+    var btn = event.target;
     btn.disabled = true;
     btn.textContent = 'Checking\u2026';
-    await fetch(`/api/routes/${id}/check`, {method: 'POST'});
+    await fetch('/api/routes/' + id + '/check', {method: 'POST'});
     location.reload();
 }
 
 async function deleteRoute(id) {
     if (confirm('Delete this route and all its data?')) {
-        await fetch(`/api/routes/${id}`, {method: 'DELETE'});
+        await fetch('/api/routes/' + id, {method: 'DELETE'});
         location.reload();
     }
 }
 
 /* Travelers */
 function addTraveler() {
-    const list = document.getElementById('travelers-list');
-    const row = document.createElement('div');
+    var list = document.getElementById('travelers-list');
+    var row = document.createElement('div');
     row.className = 'traveler-row';
     row.innerHTML = '<input type="number" name="traveler_age" value="30" min="0" max="120" placeholder="Age">' +
         '<button type="button" class="btn-sm btn-danger" onclick="removeTraveler(this)">Remove</button>';
@@ -70,13 +79,13 @@ function addTraveler() {
 }
 
 function removeTraveler(btn) {
-    const list = btn.closest('#travelers-list, #edit-travelers-list');
+    var list = btn.closest('#travelers-list') || btn.closest('#edit-travelers-list');
     if (list && list.children.length > 1) btn.parentElement.remove();
 }
 
 function toggleReturnDate() {
-    const rt = document.getElementById('is_round_trip');
-    const rd = document.getElementById('return_date');
+    var rt = document.getElementById('is_round_trip');
+    var rd = document.getElementById('return_date');
     if (rd) rd.required = rt.checked;
 }
 
@@ -89,16 +98,20 @@ function openEditModal(id, route) {
     document.getElementById('edit_airlines').value = (route.airlines || []).join(', ');
     document.getElementById('edit_alliances').value = (route.alliances || []).join(', ');
 
-    document.querySelectorAll('input[name="edit_cabin"]').forEach(cb => {
-        cb.checked = (route.cabin_types || []).includes(cb.value);
+    /* Set cabin checkboxes */
+    var cabinTypes = route.cabin_types || [];
+    document.querySelectorAll('#editForm input[name="edit_cabin"]').forEach(function(cb) {
+        cb.checked = cabinTypes.indexOf(cb.value) !== -1;
     });
 
-    const tList = document.getElementById('edit-travelers-list');
+    /* Build traveler rows */
+    var tList = document.getElementById('edit-travelers-list');
     tList.innerHTML = '';
-    (route.travelers || [30]).forEach(age => {
-        const row = document.createElement('div');
+    var travelers = route.travelers || [30];
+    travelers.forEach(function(age) {
+        var row = document.createElement('div');
         row.className = 'traveler-row';
-        row.innerHTML = `<input type="number" name="edit_traveler_age" value="${age}" min="0" max="120" placeholder="Age">` +
+        row.innerHTML = '<input type="number" name="edit_traveler_age" value="' + age + '" min="0" max="120" placeholder="Age">' +
             '<button type="button" class="btn-sm btn-danger" onclick="removeTraveler(this)">Remove</button>';
         tList.appendChild(row);
     });
@@ -111,8 +124,8 @@ function closeEditModal() {
 }
 
 function addEditTraveler() {
-    const list = document.getElementById('edit-travelers-list');
-    const row = document.createElement('div');
+    var list = document.getElementById('edit-travelers-list');
+    var row = document.createElement('div');
     row.className = 'traveler-row';
     row.innerHTML = '<input type="number" name="edit_traveler_age" value="30" min="0" max="120" placeholder="Age">' +
         '<button type="button" class="btn-sm btn-danger" onclick="removeTraveler(this)">Remove</button>';
@@ -121,19 +134,24 @@ function addEditTraveler() {
 
 async function saveEdit(e) {
     e.preventDefault();
-    const id = document.getElementById('edit_route_id').value;
-    const cabins = Array.from(document.querySelectorAll('input[name="edit_cabin"]:checked')).map(cb => cb.value);
-    const ages = Array.from(document.querySelectorAll('input[name="edit_traveler_age"]')).map(inp => parseInt(inp.value) || 30);
-    const body = {
-        departure_date: document.getElementById('edit_departure_date').value || null,
-        return_date: document.getElementById('edit_return_date').value || null,
-        is_round_trip: document.getElementById('edit_is_round_trip').checked,
+    var id = document.getElementById('edit_route_id').value;
+    var cabins = [];
+    document.querySelectorAll('#editForm input[name="edit_cabin"]:checked').forEach(function(cb) { cabins.push(cb.value); });
+    var ages = [];
+    document.querySelectorAll('#editForm input[name="edit_traveler_age"]').forEach(function(inp) { ages.push(parseInt(inp.value) || 30); });
+    var body = {
         cabin_types: cabins,
+        travelers: ages,
         airlines: splitField(document.getElementById('edit_airlines').value),
         alliances: splitField(document.getElementById('edit_alliances').value),
-        travelers: ages,
     };
-    const res = await fetch(`/api/routes/${id}`, {
+    var depDate = document.getElementById('edit_departure_date').value;
+    var retDate = document.getElementById('edit_return_date').value;
+    if (depDate) body.departure_date = depDate;
+    if (retDate) body.return_date = retDate;
+    body.is_round_trip = document.getElementById('edit_is_round_trip').checked;
+
+    var res = await fetch('/api/routes/' + id, {
         method: 'PATCH',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(body),

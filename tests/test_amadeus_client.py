@@ -29,7 +29,18 @@ class TestSearchFlights:
                 "segment_ids": ["seg1"],
             }
         ],
-        "segments": [{"id": "seg1"}],
+        "segments": [
+            {
+                "id": "seg1",
+                "marketing_carrier_id": 1,
+                "marketing_flight_number": "123",
+                "destination_place_id": "p2",
+            }
+        ],
+        "places": [
+            {"id": "p1", "alt_id": "JFK"},
+            {"id": "p2", "alt_id": "LAX"},
+        ],
         "carriers": [{"id": 1, "alt_id": "AA", "name": "American Airlines"}],
     }
 
@@ -45,6 +56,7 @@ class TestSearchFlights:
         assert results[0]["price"] == 450.0
         assert results[0]["currency"] == "USD"
         assert results[0]["cabin_type"] == "economy"
+        assert results[0]["flight_info"] == "AA123"
 
     @respx.mock
     def test_search_roundtrip(self):
@@ -118,9 +130,11 @@ class TestSearchFlights:
                 },
             ],
             "legs": [
-                {"id": "leg1", "marketing_carrier_ids": [1]},
-                {"id": "leg2", "marketing_carrier_ids": [2]},
+                {"id": "leg1", "marketing_carrier_ids": [1], "segment_ids": []},
+                {"id": "leg2", "marketing_carrier_ids": [2], "segment_ids": []},
             ],
+            "segments": [],
+            "places": [],
             "carriers": [
                 {"id": 1, "alt_id": "AA"},
                 {"id": 2, "alt_id": "UA"},
@@ -236,6 +250,103 @@ class TestSearchFlights:
         client = FlightApiClient("testkey")
         results = client.search_flights("JFK", "LAX", "2026-06-15", currency="EUR")
         assert results == []
+
+
+    def test_parse_response_multi_segment_via_stop(self):
+        """Test flight_info extraction with multiple segments (connecting flight)."""
+        data = {
+            "itineraries": [
+                {
+                    "id": "it1",
+                    "leg_ids": ["leg1"],
+                    "pricing_options": [{"price": {"amount": 600.0}}],
+                }
+            ],
+            "legs": [
+                {
+                    "id": "leg1",
+                    "marketing_carrier_ids": [1],
+                    "segment_ids": ["seg1", "seg2"],
+                }
+            ],
+            "segments": [
+                {
+                    "id": "seg1",
+                    "marketing_carrier_id": 1,
+                    "marketing_flight_number": "100",
+                    "destination_place_id": "p_ord",
+                },
+                {
+                    "id": "seg2",
+                    "marketing_carrier_id": 1,
+                    "marketing_flight_number": "200",
+                    "destination_place_id": "p_lax",
+                },
+            ],
+            "places": [
+                {"id": "p_ord", "alt_id": "ORD"},
+                {"id": "p_lax", "alt_id": "LAX"},
+            ],
+            "carriers": [{"id": 1, "alt_id": "UA"}],
+        }
+        client = FlightApiClient("testkey")
+        results = client._parse_response(data, "economy", None)
+        assert len(results) == 1
+        assert results[0]["flight_info"] == "UA100, UA200 via ORD"
+        assert results[0]["airline"] == "UA"
+        assert results[0]["currency"] == "USD"
+
+    def test_parse_response_segment_missing_carrier(self):
+        """Segment with no matching carrier_id should not produce flight part."""
+        data = {
+            "itineraries": [
+                {
+                    "id": "it1",
+                    "leg_ids": ["leg1"],
+                    "pricing_options": [{"price": {"amount": 300.0}}],
+                }
+            ],
+            "legs": [
+                {
+                    "id": "leg1",
+                    "marketing_carrier_ids": [1],
+                    "segment_ids": ["seg1"],
+                }
+            ],
+            "segments": [
+                {
+                    "id": "seg1",
+                    "marketing_carrier_id": 999,
+                    "marketing_flight_number": "100",
+                },
+            ],
+            "places": [],
+            "carriers": [{"id": 1, "alt_id": "AA"}],
+        }
+        client = FlightApiClient("testkey")
+        results = client._parse_response(data, "economy", None)
+        assert len(results) == 1
+        # carrier 999 not found in carriers dict, so no flight part
+        assert results[0]["flight_info"] == ""
+
+    def test_parse_response_with_currency(self):
+        """Test that currency parameter is passed through to results."""
+        data = {
+            "itineraries": [
+                {
+                    "id": "it1",
+                    "leg_ids": ["leg1"],
+                    "pricing_options": [{"price": {"amount": 100.0}}],
+                }
+            ],
+            "legs": [{"id": "leg1", "marketing_carrier_ids": [1], "segment_ids": []}],
+            "segments": [],
+            "places": [],
+            "carriers": [{"id": 1, "alt_id": "AA"}],
+        }
+        client = FlightApiClient("testkey")
+        results = client._parse_response(data, "economy", None, currency="RUB")
+        assert results[0]["currency"] == "RUB"
 
 
 class TestResolveAirlineCodes:

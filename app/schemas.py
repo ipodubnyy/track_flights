@@ -19,6 +19,37 @@ CURRENCY_SYMBOLS = {
     "RUB": ("₽", "after"),   # 123 ₽
 }
 
+# Approximate USD/RUB rate; updated by the app periodically
+_exchange_cache: dict[str, float] = {"USD_TO_RUB": 92.0}
+
+
+def fetch_exchange_rate() -> float:
+    """Fetch current USD->RUB rate. Falls back to cached value."""
+    import httpx
+    try:
+        resp = httpx.get(
+            "https://api.exchangerate-api.com/v4/latest/USD",
+            timeout=5.0,
+        )
+        resp.raise_for_status()
+        rate = resp.json().get("rates", {}).get("RUB", 92.0)
+        _exchange_cache["USD_TO_RUB"] = float(rate)
+    except Exception:
+        pass
+    return _exchange_cache["USD_TO_RUB"]
+
+
+def convert_price(amount: float, from_cur: str, to_cur: str) -> float:
+    """Convert between USD and RUB."""
+    if from_cur == to_cur:
+        return amount
+    rate = _exchange_cache["USD_TO_RUB"]
+    if from_cur == "USD" and to_cur == "RUB":
+        return amount * rate
+    if from_cur == "RUB" and to_cur == "USD":
+        return amount / rate if rate else amount
+    return amount
+
 
 class CurrencyUpdate(BaseModel):
     currency: str  # "USD" or "RUB"
@@ -53,6 +84,7 @@ class PriceResponse(BaseModel):
     airline: str
     price: float
     currency: str
+    flight_info: str = ""
     fetched_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

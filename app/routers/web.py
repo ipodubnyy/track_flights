@@ -7,15 +7,25 @@ from app.database import get_db
 from app.models import PriceRecord, Prediction, TrackedRoute, UserPreference
 from app.routers.api import _latest_prices_per_cabin
 from app.routers.auth import require_login
-from app.schemas import CABIN_DISPLAY_NAMES, CURRENCY_SYMBOLS, RouteResponse
+from app.schemas import CABIN_DISPLAY_NAMES, CURRENCY_SYMBOLS, RouteResponse, convert_price
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
 
+def _convert_route_prices(route_resp: RouteResponse, target_cur: str) -> RouteResponse:
+    """Convert latest_prices amounts to target currency in-place."""
+    for p in route_resp.latest_prices:
+        p.price = convert_price(p.price, p.currency or "USD", target_cur)
+        p.currency = target_cur
+    return route_resp
+
+
 @router.get("/", response_class=HTMLResponse)
 def index(request: Request, user: dict = Depends(require_login), db: Session = Depends(get_db)):
     routes_orm = db.query(TrackedRoute).order_by(TrackedRoute.created_at.desc()).all()
+    pref = db.query(UserPreference).first()
+    currency = pref.currency if pref else "USD"
     routes = []
     for r in routes_orm:
         prices = _latest_prices_per_cabin(db, r.id)
@@ -25,9 +35,9 @@ def index(request: Request, user: dict = Depends(require_login), db: Session = D
             .order_by(Prediction.created_at.desc())
             .first()
         )
-        routes.append(RouteResponse.from_model(r, prices, prediction))
-    pref = db.query(UserPreference).first()
-    currency = pref.currency if pref else "USD"
+        route_resp = RouteResponse.from_model(r, prices, prediction)
+        _convert_route_prices(route_resp, currency)
+        routes.append(route_resp)
     return templates.TemplateResponse(
         "index.html",
         {
@@ -47,7 +57,7 @@ def route_detail(route_id: int, request: Request, user: dict = Depends(require_l
     if not route_orm:
         return HTMLResponse("Route not found", status_code=404)
     latest_prices = _latest_prices_per_cabin(db, route_orm.id)
-    all_prices = (
+    all_prices_orm = (
         db.query(PriceRecord)
         .filter(PriceRecord.route_id == route_orm.id)
         .order_by(PriceRecord.fetched_at.desc())
@@ -59,9 +69,10 @@ def route_detail(route_id: int, request: Request, user: dict = Depends(require_l
         .order_by(Prediction.created_at.desc())
         .all()
     )
-    route = RouteResponse.from_model(route_orm, latest_prices, predictions[0] if predictions else None)
     pref = db.query(UserPreference).first()
     currency = pref.currency if pref else "USD"
+    route = RouteResponse.from_model(route_orm, latest_prices, predictions[0] if predictions else None)
+    _convert_route_prices(route, currency)
     return templates.TemplateResponse(
         "route_detail.html",
         {
@@ -77,11 +88,12 @@ def route_detail(route_id: int, request: Request, user: dict = Depends(require_l
                     "departure_date": p.departure_date,
                     "cabin_type": p.cabin_type,
                     "airline": p.airline,
-                    "price": p.price,
-                    "currency": p.currency,
+                    "price": convert_price(p.price, p.currency or "USD", currency),
+                    "currency": currency,
+                    "flight_info": p.flight_info or "",
                     "fetched_at": p.fetched_at,
                 }
-                for p in all_prices
+                for p in all_prices_orm
             ],
             "all_predictions": [
                 {

@@ -1,7 +1,15 @@
 from datetime import date, datetime
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
-from app.schemas import PredictionResponse, PriceResponse, RouteCreate, RouteResponse
+from app.schemas import (
+    PredictionResponse,
+    PriceResponse,
+    RouteCreate,
+    RouteResponse,
+    convert_price,
+    fetch_exchange_rate,
+    _exchange_cache,
+)
 
 
 class TestRouteCreate:
@@ -102,6 +110,7 @@ class TestRouteResponse:
         mock_price.airline = "AA"
         mock_price.price = 350.0
         mock_price.currency = "USD"
+        mock_price.flight_info = "AA123"
         mock_price.fetched_at = datetime(2026, 1, 1, 12, 0, 0)
 
         mock_pred = MagicMock()
@@ -159,3 +168,38 @@ class TestPredictionResponse:
         )
         assert pred.trend == "up"
         assert pred.predicted_best_buy_date is None
+
+
+class TestFetchExchangeRate:
+    @patch("httpx.get")
+    def test_success(self, mock_get):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"rates": {"RUB": 95.5}}
+        mock_get.return_value = mock_resp
+        _exchange_cache["USD_TO_RUB"] = 92.0  # reset
+        rate = fetch_exchange_rate()
+        assert rate == 95.5
+        assert _exchange_cache["USD_TO_RUB"] == 95.5
+
+    @patch("httpx.get", side_effect=Exception("network error"))
+    def test_failure_uses_cached(self, mock_get):
+        _exchange_cache["USD_TO_RUB"] = 88.0
+        rate = fetch_exchange_rate()
+        assert rate == 88.0
+
+
+class TestConvertPrice:
+    def test_same_currency(self):
+        assert convert_price(100.0, "USD", "USD") == 100.0
+
+    def test_usd_to_rub(self):
+        _exchange_cache["USD_TO_RUB"] = 90.0
+        assert convert_price(10.0, "USD", "RUB") == 900.0
+
+    def test_rub_to_usd(self):
+        _exchange_cache["USD_TO_RUB"] = 90.0
+        result = convert_price(900.0, "RUB", "USD")
+        assert result == 10.0
+
+    def test_unknown_currency_pair(self):
+        assert convert_price(100.0, "EUR", "GBP") == 100.0

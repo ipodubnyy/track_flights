@@ -119,6 +119,21 @@ class TestPriceRecord:
         db_session.refresh(record)
         assert record.departure_date == date(2026, 6, 15)
 
+    def test_flight_info(self, db_session, sample_route):
+        record = PriceRecord(
+            route_id=sample_route.id,
+            cabin_type="economy",
+            airline="UA",
+            price=500.0,
+            currency="USD",
+            flight_info="UA123 via ORD",
+            fetched_at=datetime(2026, 1, 1),
+        )
+        db_session.add(record)
+        db_session.commit()
+        db_session.refresh(record)
+        assert record.flight_info == "UA123 via ORD"
+
     def test_departure_date_nullable(self, db_session, sample_route):
         record = PriceRecord(
             route_id=sample_route.id,

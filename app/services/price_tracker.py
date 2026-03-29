@@ -72,6 +72,7 @@ class PriceTracker:
                         airline=r.get("airline", "??"),
                         price=r.get("price", 0),
                         currency=r.get("currency", "USD"),
+                        flight_info=r.get("flight_info", ""),
                     )
                     db.add(record)
                     all_prices.append({**r, "departure_date": dep_date.isoformat()})

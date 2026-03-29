@@ -49,10 +49,14 @@ class TelegramNotifier:
         lines.append("")
         lines.append("<b>Current prices:</b>")
         for p in prices:
-            lines.append(
-                f"  {p.get('airline', '??')} | {p.get('cabin_type', '')} | "
-                f"{p.get('price', 0):.0f} {p.get('currency', 'USD')}"
-            )
+            line = f"  {p.get('airline', '??')} | {p.get('cabin_type', '')} | "
+            line += f"{p.get('price', 0):.0f} {p.get('currency', 'USD')}"
+            flight_info = p.get('flight_info', '')
+            if flight_info:
+                line += f" ({flight_info})"
+            if p.get('departure_date'):
+                line += f" [dep {p.get('departure_date')}]"
+            lines.append(line)
 
         lines.append("")
         trend = prediction.get("trend", "stable")

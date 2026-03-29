@@ -30,6 +30,13 @@ async def lifespan(app: FastAPI):
 
     setup_oauth(settings)
 
+    from app.schemas import fetch_exchange_rate
+    try:
+        rate = fetch_exchange_rate()
+        logger.info("Exchange rate USD->RUB: %.2f", rate)
+    except Exception:
+        logger.warning("Failed to fetch exchange rate, using cached")
+
     amadeus = FlightApiClient(settings.FLIGHTAPI_KEY)
     predictor = PricePredictor(settings.GROK_API_KEY)
     notifier = TelegramNotifier(settings.TELEGRAM_BOT_TOKEN, settings.TELEGRAM_CHAT_ID)

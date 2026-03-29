@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% macro fmt_price(amount, cur) -%}
     {%- set sym = CURRENCY_SYMBOLS.get(cur, ("$", "before")) -%}
-    {%- if sym[1] == "before" -%}{{ sym[0] }}{{ "%.0f" | format(amount) }}{%- else -%}{{ "%.0f" | format(amount) }}&nbsp;{{ sym[0] }}{%- endif -%}
+    {%- if sym[1] == "before" -%}{{ sym[0] }}{{ "{:,.0f}".format(amount) }}{%- else -%}{{ "{:,.0f}".format(amount) }}&nbsp;{{ sym[0] }}{%- endif -%}
 {%- endmacro %}
 {% macro cabin_name(key) %}{{ CABIN_DISPLAY_NAMES.get(key, key) }}{% endmacro %}
 
@@ -22,33 +22,41 @@
         <div class="route-card-meta">
             <span>{{ r.departure_date }}{% if r.return_date %} &mdash; {{ r.return_date }}{% endif %}</span>
             <span class="sep">|</span>
-            <span>{{ r.cabin_types | map('replace', 'economy_plus', 'Economy Plus') | map('replace', 'premium_economy', 'Premium Economy') | map('replace', 'business', 'Business') | map('replace', 'economy', 'Economy') | map('replace', 'first', 'First') | join(", ") or "Any cabin" }}</span>
+            <span>{% for c in r.cabin_types %}{{ cabin_name(c) }}{% if not loop.last %}, {% endif %}{% endfor %}{% if not r.cabin_types %}Any cabin{% endif %}</span>
             <span class="sep">|</span>
             <span>{{ r.travelers | length }} traveler{{ "s" if r.travelers | length != 1 }}</span>
         </div>
-        {% if r.airlines or r.alliances %}
-        <div class="route-card-meta">
-            {% if r.airlines %}Airlines: {{ r.airlines | join(", ") }}{% endif %}
-            {% if r.alliances %}{% if r.airlines %} / {% endif %}{{ r.alliances | join(", ") }}{% endif %}
-        </div>
-        {% endif %}
 
+        {# Group latest_prices: primary date first, then ±days underneath #}
+        {% set primary_dep = r.departure_date.isoformat() if r.departure_date else '' %}
         {% if r.latest_prices %}
-        <div class="route-card-prices">
-            {% for p in r.latest_prices %}
-            <div class="price-chip">
-                <span class="price-chip-date">{{ p.departure_date }}</span>
+        <div class="route-prices-block">
+            {# Primary date prices + trend on same line #}
+            {% for p in r.latest_prices if p.departure_date and p.departure_date.isoformat() == primary_dep %}
+            <div class="price-row primary">
                 <span class="price-chip-cabin">{{ cabin_name(p.cabin_type) }}</span>
                 <span class="price-chip-amount">{{ fmt_price(p.price, currency) }}</span>
+                {% if p.flight_info %}<span class="price-flight">{{ p.flight_info }}</span>{% endif %}
             </div>
             {% endfor %}
-        </div>
-        {% endif %}
-
-        {% if r.latest_prediction %}
-        <div class="route-card-trend">
-            <span class="trend trend-{{ r.latest_prediction.trend }}">{{ r.latest_prediction.trend | capitalize }}</span>
-            <span class="trend-rec">{{ r.latest_prediction.buy_recommendation }}</span>
+            {% if r.latest_prediction %}
+            <div class="inline-prediction">
+                <span class="trend trend-{{ r.latest_prediction.trend }}">{{ r.latest_prediction.trend | capitalize }}</span>
+                <span class="trend-rec">&mdash; {{ r.latest_prediction.buy_recommendation }}</span>
+            </div>
+            {% endif %}
+            {# Nearby dates in smaller text #}
+            {% set nearby = [] %}
+            {% for p in r.latest_prices if not p.departure_date or p.departure_date.isoformat() != primary_dep %}
+                {% if nearby.append(p) %}{% endif %}
+            {% endfor %}
+            {% if nearby %}
+            <div class="nearby-prices">
+                {% for p in nearby %}
+                <span class="nearby-chip">{{ p.departure_date }} {{ cabin_name(p.cabin_type) }} {{ fmt_price(p.price, currency) }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
         </div>
         {% endif %}
 
@@ -155,7 +163,7 @@
             </div>
             <div class="form-group">
                 <label>Cabin</label>
-                <div class="checkbox-group">
+                <div class="checkbox-group" id="edit-cabin-group">
                     <label class="chip-label"><input type="checkbox" name="edit_cabin" value="economy_plus"> Economy Plus</label>
                     <label class="chip-label"><input type="checkbox" name="edit_cabin" value="premium_economy"> Premium Economy</label>
                     <label class="chip-label"><input type="checkbox" name="edit_cabin" value="business"> Business</label>
@@ -172,7 +180,7 @@
                 </div>
             </div>
             <div class="form-group">
-                <label>Travelers</label>
+                <label>Travelers (ages)</label>
                 <div id="edit-travelers-list"></div>
                 <button type="button" class="btn-sm" onclick="addEditTraveler()">+ Add Traveler</button>
             </div>

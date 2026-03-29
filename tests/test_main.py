@@ -96,8 +96,10 @@ class TestLifespan:
     @patch("app.main.setup_oauth")
     @patch("app.main.Base")
     @patch("app.main.get_settings")
+    @patch("app.schemas.fetch_exchange_rate", return_value=92.0)
     async def test_lifespan_startup_and_shutdown(
         self,
+        mock_fetch_exchange_rate,
         mock_get_settings,
         mock_base,
         mock_setup_oauth,
@@ -130,5 +132,48 @@ class TestLifespan:
             mock_start_scheduler.assert_called_once()
             assert mock_app.state.price_tracker is not None
             assert mock_app.state.scheduler is mock_scheduler
+
+        mock_stop_scheduler.assert_called_once_with(mock_scheduler)
+        mock_fetch_exchange_rate.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("app.main.stop_scheduler")
+    @patch("app.main.start_scheduler")
+    @patch("app.main.TelegramNotifier")
+    @patch("app.main.PricePredictor")
+    @patch("app.main.FlightApiClient")
+    @patch("app.main.setup_oauth")
+    @patch("app.main.Base")
+    @patch("app.main.get_settings")
+    @patch("app.schemas.fetch_exchange_rate", side_effect=Exception("network error"))
+    async def test_lifespan_exchange_rate_failure(
+        self,
+        mock_fetch_exchange_rate,
+        mock_get_settings,
+        mock_base,
+        mock_setup_oauth,
+        mock_flight_api_cls,
+        mock_predictor_cls,
+        mock_notifier_cls,
+        mock_start_scheduler,
+        mock_stop_scheduler,
+    ):
+        settings = MagicMock()
+        settings.FLIGHTAPI_KEY = "fkey"
+        settings.GROK_API_KEY = "grok"
+        settings.TELEGRAM_BOT_TOKEN = "bot"
+        settings.TELEGRAM_CHAT_ID = "chat"
+        settings.CHECK_INTERVAL_HOURS = 6
+        mock_get_settings.return_value = settings
+
+        mock_scheduler = MagicMock()
+        mock_start_scheduler.return_value = mock_scheduler
+
+        mock_app = MagicMock()
+        mock_app.state = MagicMock()
+
+        # Should not raise even though fetch_exchange_rate raises
+        async with lifespan(mock_app):
+            pass
 
         mock_stop_scheduler.assert_called_once_with(mock_scheduler)

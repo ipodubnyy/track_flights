@@ -77,17 +77,19 @@ class FlightApiClient:
                 response.raise_for_status()
                 data = response.json()
 
-            results = self._parse_response(data, cabin_class or "economy", airline_codes)
+            results = self._parse_response(data, cabin_class or "economy", airline_codes, currency)
         except Exception:
             logger.exception("FlightAPI search failed")
 
         return results
 
     def _parse_response(
-        self, data: dict, cabin_type: str, airline_codes: list[str] | None
+        self, data: dict, cabin_type: str, airline_codes: list[str] | None, currency: str = "USD"
     ) -> list[dict]:
         carriers = {c["id"]: c for c in data.get("carriers", [])}
         legs = {leg["id"]: leg for leg in data.get("legs", [])}
+        segments = {s["id"]: s for s in data.get("segments", [])}
+        places = {p["id"]: p for p in data.get("places", [])}
 
         results: list[dict] = []
         for itin in data.get("itineraries", []):
@@ -110,13 +112,41 @@ class FlightApiClient:
             if airline_codes and airline_code not in airline_codes:
                 continue
 
-            results.append(
-                {
-                    "airline": airline_code,
-                    "price": float(price_amount),
-                    "currency": "USD",
-                    "cabin_type": cabin_type,
-                }
-            )
+            # Extract flight info from segments
+            flight_parts = []
+            via_airports = []
+            if leg_ids:
+                leg = legs.get(leg_ids[0], {})
+                seg_ids = leg.get("segment_ids", [])
+                for sid in seg_ids:
+                    seg = segments.get(sid, {})
+                    carrier_id = seg.get("marketing_carrier_id")
+                    flight_num = seg.get("marketing_flight_number", "")
+                    carrier_code = ""
+                    if carrier_id and carrier_id in carriers:
+                        carrier_code = carriers[carrier_id].get("alt_id", "")
+                    if carrier_code and flight_num:
+                        flight_parts.append(f"{carrier_code}{flight_num}")
+                    # If multiple segments, intermediate destinations are "via" points
+                    if len(seg_ids) > 1:
+                        dest_id = seg.get("destination_place_id")
+                        if dest_id and dest_id in places:
+                            place = places[dest_id]
+                            via_airports.append(place.get("alt_id", place.get("name", "")))
+                # Remove final destination from via list (it's not a stop)
+                if via_airports:
+                    via_airports = via_airports[:-1]
+
+            flight_str = ", ".join(flight_parts)
+            if via_airports:
+                flight_str += " via " + ", ".join(via_airports)
+
+            results.append({
+                "airline": airline_code,
+                "price": float(price_amount),
+                "currency": currency,
+                "cabin_type": cabin_type,
+                "flight_info": flight_str,
+            })
 
         return results
