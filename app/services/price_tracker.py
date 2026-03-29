@@ -4,7 +4,7 @@ from datetime import date
 from sqlalchemy.orm import Session
 
 from app.models import PriceRecord, Prediction, TrackedRoute
-from app.services.amadeus_client import AmadeusClient
+from app.services.amadeus_client import FlightApiClient
 from app.services.notifier import TelegramNotifier
 from app.services.predictor import PricePredictor
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class PriceTracker:
     def __init__(
         self,
-        amadeus: AmadeusClient,
+        amadeus: FlightApiClient,
         predictor: PricePredictor,
         notifier: TelegramNotifier,
     ) -> None:
@@ -27,9 +27,13 @@ class PriceTracker:
         airlines = route.get_airlines()
         alliances = route.get_alliances()
         travelers = route.get_travelers() or [30]
-        adults = len(travelers)
+        adults = sum(1 for age in travelers if age >= 12)
+        children = sum(1 for age in travelers if 2 <= age < 12)
+        infants = sum(1 for age in travelers if age < 2)
+        adults = adults or 1
 
-        airline_codes = AmadeusClient.resolve_airline_codes(airlines, alliances)
+        airline_codes = FlightApiClient.resolve_airline_codes(airlines, alliances)
+        return_date = route.return_date.isoformat() if route.return_date else None
 
         all_prices: list[dict] = []
 
@@ -39,8 +43,11 @@ class PriceTracker:
                 destination=route.destination,
                 departure_date=route.departure_date.isoformat(),
                 adults=adults,
+                children=children,
+                infants=infants,
                 cabin_class=cabin,
                 airline_codes=airline_codes or None,
+                return_date=return_date,
             )
 
             for r in results:

@@ -50,22 +50,21 @@ class TestLifespan:
     @patch("app.main.start_scheduler")
     @patch("app.main.TelegramNotifier")
     @patch("app.main.PricePredictor")
-    @patch("app.main.AmadeusClient")
+    @patch("app.main.FlightApiClient")
     @patch("app.main.Base")
     @patch("app.main.get_settings")
     async def test_lifespan_startup_and_shutdown(
         self,
         mock_get_settings,
         mock_base,
-        mock_amadeus_cls,
+        mock_flight_api_cls,
         mock_predictor_cls,
         mock_notifier_cls,
         mock_start_scheduler,
         mock_stop_scheduler,
     ):
         settings = MagicMock()
-        settings.AMADEUS_API_KEY = "key"
-        settings.AMADEUS_API_SECRET = "secret"
+        settings.FLIGHTAPI_KEY = "fkey"
         settings.GROK_API_KEY = "grok"
         settings.TELEGRAM_BOT_TOKEN = "bot"
         settings.TELEGRAM_CHAT_ID = "chat"
@@ -79,14 +78,12 @@ class TestLifespan:
         mock_app.state = MagicMock()
 
         async with lifespan(mock_app):
-            # Verify startup
             mock_base.metadata.create_all.assert_called_once()
-            mock_amadeus_cls.assert_called_once_with("key", "secret")
+            mock_flight_api_cls.assert_called_once_with("fkey")
             mock_predictor_cls.assert_called_once_with("grok")
             mock_notifier_cls.assert_called_once_with("bot", "chat")
             mock_start_scheduler.assert_called_once()
             assert mock_app.state.price_tracker is not None
             assert mock_app.state.scheduler is mock_scheduler
 
-        # Verify shutdown
         mock_stop_scheduler.assert_called_once_with(mock_scheduler)

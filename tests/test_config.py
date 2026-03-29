@@ -4,27 +4,25 @@ from app.config import Settings, get_settings
 class TestSettings:
     def test_defaults(self):
         s = Settings(
-            AMADEUS_API_KEY="",
-            AMADEUS_API_SECRET="",
+            FLIGHTAPI_KEY="",
             GROK_API_KEY="",
             TELEGRAM_BOT_TOKEN="",
             TELEGRAM_CHAT_ID="",
         )
-        assert s.AMADEUS_API_KEY == ""
+        assert s.FLIGHTAPI_KEY == ""
         assert s.DATABASE_URL == "sqlite:///./track_flights.db"
         assert s.CHECK_INTERVAL_HOURS == 6
 
     def test_custom_values(self):
         s = Settings(
-            AMADEUS_API_KEY="key",
-            AMADEUS_API_SECRET="secret",
+            FLIGHTAPI_KEY="fkey",
             GROK_API_KEY="grok",
             TELEGRAM_BOT_TOKEN="bot",
             TELEGRAM_CHAT_ID="123",
             DATABASE_URL="sqlite:///test.db",
             CHECK_INTERVAL_HOURS=12,
         )
-        assert s.AMADEUS_API_KEY == "key"
+        assert s.FLIGHTAPI_KEY == "fkey"
         assert s.DATABASE_URL == "sqlite:///test.db"
         assert s.CHECK_INTERVAL_HOURS == 12
 

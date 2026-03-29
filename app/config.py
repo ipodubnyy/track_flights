@@ -4,8 +4,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    AMADEUS_API_KEY: str = ""
-    AMADEUS_API_SECRET: str = ""
+    FLIGHTAPI_KEY: str = ""
     GROK_API_KEY: str = ""
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_CHAT_ID: str = ""

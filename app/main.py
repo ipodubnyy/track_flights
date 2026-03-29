@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import get_settings
 from app.database import Base, engine, get_db
 from app.routers import api, web
-from app.services.amadeus_client import AmadeusClient
+from app.services.amadeus_client import FlightApiClient
 from app.services.notifier import TelegramNotifier
 from app.services.predictor import PricePredictor
 from app.services.price_tracker import PriceTracker
@@ -25,7 +25,7 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created")
 
-    amadeus = AmadeusClient(settings.AMADEUS_API_KEY, settings.AMADEUS_API_SECRET)
+    amadeus = FlightApiClient(settings.FLIGHTAPI_KEY)
     predictor = PricePredictor(settings.GROK_API_KEY)
     notifier = TelegramNotifier(settings.TELEGRAM_BOT_TOKEN, settings.TELEGRAM_CHAT_ID)
     price_tracker = PriceTracker(amadeus, predictor, notifier)
