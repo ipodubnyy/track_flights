@@ -45,15 +45,23 @@
                 <span class="trend-rec">&mdash; {{ r.latest_prediction.buy_recommendation }}</span>
             </div>
             {% endif %}
-            {# Nearby dates in smaller text #}
+            {# Nearby dates - hidden by default, toggle to show #}
             {% set nearby = [] %}
             {% for p in r.latest_prices if not p.departure_date or p.departure_date.isoformat() != primary_dep %}
                 {% if nearby.append(p) %}{% endif %}
             {% endfor %}
             {% if nearby %}
-            <div class="nearby-prices">
+            <div class="nearby-toggle">
+                <select class="nearby-select" onchange="toggleNearby(this, {{ r.id }})">
+                    <option value="0">Nearby dates: hidden</option>
+                    <option value="1">&plusmn;1 day</option>
+                    <option value="2">&plusmn;2 days</option>
+                    <option value="3">&plusmn;3 days</option>
+                </select>
+            </div>
+            <div class="nearby-prices" id="nearby-{{ r.id }}" style="display:none">
                 {% for p in nearby %}
-                <span class="nearby-chip">{{ p.departure_date }} {{ cabin_name(p.cabin_type) }} {{ fmt_price(p.price, currency) }}</span>
+                <span class="nearby-chip" data-offset="{{ ((p.departure_date - r.departure_date).days)|abs if p.departure_date and r.departure_date else 0 }}">{{ p.departure_date }} {{ cabin_name(p.cabin_type) }} {{ fmt_price(p.price, currency) }}</span>
                 {% endfor %}
             </div>
             {% endif %}
@@ -63,15 +71,7 @@
         <div class="route-card-actions">
             <button class="btn-sm" onclick="toggleRoute({{ r.id }})">{{ "Pause" if r.is_active else "Resume" }}</button>
             <button class="btn-sm btn-primary" onclick="checkRoute({{ r.id }})">Check Now</button>
-            <button class="btn-sm" onclick="openEditModal({{ r.id }}, {
-                departure_date: '{{ r.departure_date }}',
-                return_date: '{{ r.return_date or '' }}',
-                is_round_trip: {{ 'true' if r.is_round_trip else 'false' }},
-                cabin_types: {{ r.cabin_types | tojson }},
-                airlines: {{ r.airlines | tojson }},
-                alliances: {{ r.alliances | tojson }},
-                travelers: {{ r.travelers | tojson }}
-            })">Edit</button>
+            <button class="btn-sm" data-route-id="{{ r.id }}" data-route='{{ {"departure_date": r.departure_date|string, "return_date": (r.return_date|string if r.return_date else ""), "is_round_trip": r.is_round_trip, "cabin_types": r.cabin_types, "airlines": r.airlines, "alliances": r.alliances, "travelers": r.travelers} | tojson }}' onclick="openEditModal(this)">Edit</button>
             <button class="btn-sm btn-danger" onclick="deleteRoute({{ r.id }})">Delete</button>
         </div>
     </div>

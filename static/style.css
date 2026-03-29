@@ -71,7 +71,10 @@ h3 { font-size: 0.95rem; font-weight: 600; color: var(--muted); }
 
 /* Nearby dates (smaller, compact) */
 .nearby-section { margin-top: 10px; }
-.nearby-heading { font-size: 0.78rem; color: var(--subtle); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+.nearby-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.nearby-heading { font-size: 0.78rem; color: var(--subtle); text-transform: uppercase; letter-spacing: 0.05em; margin: 0; }
+.nearby-toggle { margin: 6px 0 4px; }
+.nearby-select { font-family: inherit; font-size: 0.78rem; padding: 3px 8px; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); background: var(--surface); cursor: pointer; }
 .nearby-prices { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .nearby-chip { font-size: 0.72rem; color: var(--muted); background: #f1f5f9; border-radius: 4px; padding: 2px 8px; white-space: nowrap; }
 .nearby-prices-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }

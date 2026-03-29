@@ -89,8 +89,27 @@ function toggleReturnDate() {
     if (rd) rd.required = rt.checked;
 }
 
+/* Nearby dates toggle */
+function toggleNearby(selectEl, routeId) {
+    var maxOffset = parseInt(selectEl.value) || 0;
+    var container = document.getElementById('nearby-' + routeId);
+    if (!container) return;
+    if (maxOffset === 0) {
+        container.style.display = 'none';
+        return;
+    }
+    container.style.display = '';
+    var items = container.querySelectorAll('[data-offset]');
+    items.forEach(function(el) {
+        var offset = parseInt(el.getAttribute('data-offset')) || 0;
+        el.style.display = offset <= maxOffset ? '' : 'none';
+    });
+}
+
 /* Edit modal */
-function openEditModal(id, route) {
+function openEditModal(btn) {
+    var id = btn.getAttribute('data-route-id');
+    var route = JSON.parse(btn.getAttribute('data-route'));
     document.getElementById('edit_route_id').value = id;
     document.getElementById('edit_departure_date').value = route.departure_date || '';
     document.getElementById('edit_return_date').value = route.return_date || '';

@@ -59,17 +59,25 @@
     {% endif %}
     {% endif %}
 
-    {# Nearby date prices in smaller display #}
+    {# Nearby date prices - shown on demand #}
     {% set nearby = [] %}
     {% for p in route.latest_prices if not p.departure_date or p.departure_date.isoformat() != primary_dep %}
         {% if nearby.append(p) %}{% endif %}
     {% endfor %}
     {% if nearby %}
     <div class="nearby-section">
-        <h3 class="nearby-heading">Nearby dates</h3>
-        <div class="nearby-prices-grid">
+        <div class="nearby-header">
+            <h3 class="nearby-heading">Nearby dates</h3>
+            <select class="nearby-select" onchange="toggleNearby(this, 'detail')">
+                <option value="0">Hidden</option>
+                <option value="1">&plusmn;1 day</option>
+                <option value="2">&plusmn;2 days</option>
+                <option value="3">&plusmn;3 days</option>
+            </select>
+        </div>
+        <div class="nearby-prices-grid" id="nearby-detail" style="display:none">
             {% for p in nearby %}
-            <div class="nearby-card">
+            <div class="nearby-card" data-offset="{{ ((p.departure_date - route.departure_date).days)|abs if p.departure_date and route.departure_date else 0 }}">
                 <span class="nearby-date">{{ p.departure_date }}</span>
                 <span class="nearby-amount">{{ fmt_price(p.price, currency) }}</span>
                 <span class="nearby-detail">{{ cabin_name(p.cabin_type) }} &middot; {{ p.airline }}</span>
