@@ -21,7 +21,7 @@ router = APIRouter(prefix="/api", dependencies=[Depends(require_login)])
 
 
 def _latest_prices_per_cabin(db: Session, route_id: int) -> list[PriceRecord]:
-    """Return the most recent price record for each (departure_date, cabin_type) on a route."""
+    """Return the most recent price record for each (departure_date, cabin_type, airline) on a route."""
     route = db.query(TrackedRoute).filter(TrackedRoute.id == route_id).first()
     route_dep = route.departure_date if route else None
     all_prices = (
@@ -34,10 +34,10 @@ def _latest_prices_per_cabin(db: Session, route_id: int) -> list[PriceRecord]:
     for p in all_prices:
         # Treat NULL departure_date as the route's requested date
         dep = p.departure_date or route_dep
-        key = (dep, p.cabin_type)
+        key = (dep, p.cabin_type, p.airline)
         if key not in seen:
             seen[key] = p
-    return sorted(seen.values(), key=lambda p: (p.departure_date or route_dep or date.min, p.cabin_type))
+    return sorted(seen.values(), key=lambda p: (p.departure_date or route_dep or date.min, p.cabin_type, p.airline))
 
 
 def _run_check_in_background(app_state, route_id: int, get_db_func) -> None:
