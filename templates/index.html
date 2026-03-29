@@ -27,46 +27,52 @@
             <span>{{ r.travelers | length }} traveler{{ "s" if r.travelers | length != 1 }}</span>
         </div>
 
-        {# Group latest_prices: primary date first, then ±days underneath #}
+        {# Two-column layout: prices left, chart right #}
         {% set primary_dep = r.departure_date.isoformat() if r.departure_date else '' %}
-        {% if r.latest_prices %}
-        <div class="route-prices-block">
-            {# Primary date prices + trend on same line #}
-            {% for p in r.latest_prices if not p.departure_date or p.departure_date.isoformat() == primary_dep %}
-            <div class="price-row primary">
-                <span class="price-chip-cabin">{{ cabin_name(p.cabin_type) }}</span>
-                <span class="price-chip-amount">{{ fmt_price(p.price, currency) }}</span>
-                {% if p.flight_info %}<span class="price-flight">{{ p.flight_info }}</span>{% endif %}
+        <div class="route-card-body">
+            <div class="route-card-left">
+                {% if r.latest_prices %}
+                <div class="route-prices-block">
+                    {% for p in r.latest_prices if not p.departure_date or p.departure_date.isoformat() == primary_dep %}
+                    <div class="price-row primary">
+                        <span class="price-chip-airline">{{ p.airline }}</span>
+                        <span class="price-chip-cabin">{{ cabin_name(p.cabin_type) }}</span>
+                        <span class="price-chip-amount">{{ fmt_price(p.price, currency) }}</span>
+                        {% if p.flight_info %}<span class="price-flight">{{ p.flight_info }}</span>{% endif %}
+                    </div>
+                    {% endfor %}
+                    {% if r.latest_prediction %}
+                    <div class="inline-prediction">
+                        <span class="trend trend-{{ r.latest_prediction.trend }}">{{ r.latest_prediction.trend | capitalize }}</span>
+                        <span class="trend-rec">&mdash; {{ r.latest_prediction.buy_recommendation }}</span>
+                    </div>
+                    {% endif %}
+                    {% set nearby = [] %}
+                    {% for p in r.latest_prices if p.departure_date and p.departure_date.isoformat() != primary_dep %}
+                        {% if nearby.append(p) %}{% endif %}
+                    {% endfor %}
+                    {% if nearby %}
+                    <div class="nearby-toggle">
+                        <select class="nearby-select" onchange="toggleNearby(this, {{ r.id }})">
+                            <option value="0">Nearby dates: hidden</option>
+                            <option value="1">&plusmn;1 day</option>
+                            <option value="2">&plusmn;2 days</option>
+                            <option value="3">&plusmn;3 days</option>
+                        </select>
+                    </div>
+                    <div class="nearby-prices" id="nearby-{{ r.id }}" style="display:none">
+                        {% for p in nearby %}
+                        <span class="nearby-chip" data-offset="{{ ((p.departure_date - r.departure_date).days)|abs if p.departure_date and r.departure_date else 0 }}">{{ p.departure_date }} {{ cabin_name(p.cabin_type) }} {{ p.airline }} {{ fmt_price(p.price, currency) }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
-            {% endfor %}
-            {% if r.latest_prediction %}
-            <div class="inline-prediction">
-                <span class="trend trend-{{ r.latest_prediction.trend }}">{{ r.latest_prediction.trend | capitalize }}</span>
-                <span class="trend-rec">&mdash; {{ r.latest_prediction.buy_recommendation }}</span>
+            <div class="route-card-right">
+                <canvas id="chart-{{ r.id }}" height="120"></canvas>
             </div>
-            {% endif %}
-            {# Nearby dates - hidden by default, toggle to show #}
-            {% set nearby = [] %}
-            {% for p in r.latest_prices if p.departure_date and p.departure_date.isoformat() != primary_dep %}
-                {% if nearby.append(p) %}{% endif %}
-            {% endfor %}
-            {% if nearby %}
-            <div class="nearby-toggle">
-                <select class="nearby-select" onchange="toggleNearby(this, {{ r.id }})">
-                    <option value="0">Nearby dates: hidden</option>
-                    <option value="1">&plusmn;1 day</option>
-                    <option value="2">&plusmn;2 days</option>
-                    <option value="3">&plusmn;3 days</option>
-                </select>
-            </div>
-            <div class="nearby-prices" id="nearby-{{ r.id }}" style="display:none">
-                {% for p in nearby %}
-                <span class="nearby-chip" data-offset="{{ ((p.departure_date - r.departure_date).days)|abs if p.departure_date and r.departure_date else 0 }}">{{ p.departure_date }} {{ cabin_name(p.cabin_type) }} {{ fmt_price(p.price, currency) }}</span>
-                {% endfor %}
-            </div>
-            {% endif %}
         </div>
-        {% endif %}
 
         <div class="route-card-actions">
             <button class="btn-sm" onclick="toggleRoute({{ r.id }})">{{ "Pause" if r.is_active else "Resume" }}</button>
@@ -191,4 +197,89 @@
         </form>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+var AIRLINE_COLORS = [
+    '#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6',
+    '#ec4899', '#14b8a6', '#f97316', '#3b82f6', '#84cc16'
+];
+var routeHistories = {{ route_histories | tojson }};
+var displayCurrency = '{{ currency }}';
+
+document.addEventListener('DOMContentLoaded', function() {
+    Object.keys(routeHistories).forEach(function(routeId) {
+        var history = routeHistories[routeId];
+        if (!history || history.length === 0) return;
+        var canvas = document.getElementById('chart-' + routeId);
+        if (!canvas) return;
+
+        var airlineData = {};
+        history.forEach(function(p) {
+            var key = p.airline;
+            if (!airlineData[key]) airlineData[key] = [];
+            airlineData[key].push(p);
+        });
+
+        var airlines = Object.keys(airlineData);
+        var datasets = [];
+        airlines.forEach(function(airline, idx) {
+            var points = airlineData[airline];
+            var color = AIRLINE_COLORS[idx % AIRLINE_COLORS.length];
+            datasets.push({
+                label: airline,
+                data: points.map(function(p) { return { x: p.fetched_at, y: p.price }; }),
+                borderColor: color,
+                backgroundColor: color + '18',
+                fill: false,
+                tension: 0.3,
+                pointRadius: 2,
+                pointBackgroundColor: color,
+                borderWidth: 2,
+            });
+        });
+
+        new Chart(canvas, {
+            type: 'line',
+            data: { datasets: datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: airlines.length > 1,
+                        position: 'bottom',
+                        labels: { boxWidth: 10, font: { size: 10 }, padding: 6 }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                var v = ctx.parsed.y;
+                                var label = ctx.dataset.label || '';
+                                var price = displayCurrency === 'RUB' ? v.toLocaleString() + ' \u20BD' : '$' + v.toLocaleString();
+                                return label + ': ' + price;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { type: 'category', display: false },
+                    y: {
+                        beginAtZero: false,
+                        ticks: {
+                            font: { size: 9 },
+                            callback: function(v) {
+                                return displayCurrency === 'RUB' ? (v/1000).toFixed(0) + 'k\u20BD' : '$' + (v/1000).toFixed(0) + 'k';
+                            },
+                            maxTicksLimit: 4,
+                        },
+                        grid: { color: 'rgba(0,0,0,0.04)' },
+                    }
+                },
+                interaction: { mode: 'nearest', intersect: false },
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

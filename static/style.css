@@ -55,10 +55,21 @@ h3 { font-size: 0.95rem; font-weight: 600; color: var(--muted); }
 .route-card-meta { font-size: 0.82rem; color: var(--muted); margin-bottom: 2px; }
 .route-card-meta .sep { margin: 0 6px; color: var(--border); }
 
+/* Two-column body: prices left, chart right */
+.route-card-body { display: flex; gap: 16px; margin: 8px 0; }
+.route-card-left { flex: 1; min-width: 0; }
+.route-card-right { width: 280px; min-width: 200px; flex-shrink: 0; position: relative; }
+.route-card-right canvas { width: 100% !important; height: 100% !important; min-height: 100px; }
+@media (max-width: 700px) {
+    .route-card-body { flex-direction: column; }
+    .route-card-right { width: 100%; height: 140px; }
+}
+
 /* Price display in cards */
-.route-prices-block { margin: 8px 0; }
+.route-prices-block { margin: 0; }
 .price-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
 .price-row.primary { font-size: 0.92rem; }
+.price-chip-airline { font-weight: 600; font-size: 0.82rem; min-width: 30px; }
 .price-chip-cabin { color: var(--muted); font-size: 0.82rem; min-width: 100px; }
 .price-chip-amount { font-weight: 700; }
 .price-flight { font-size: 0.75rem; color: var(--subtle); }

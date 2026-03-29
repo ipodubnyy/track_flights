@@ -27,6 +27,7 @@ def index(request: Request, user: dict = Depends(require_login), db: Session = D
     pref = db.query(UserPreference).first()
     currency = pref.currency if pref else "USD"
     routes = []
+    route_histories: dict[int, list] = {}
     for r in routes_orm:
         prices = _latest_prices_per_cabin(db, r.id)
         prediction = (
@@ -38,6 +39,27 @@ def index(request: Request, user: dict = Depends(require_login), db: Session = D
         route_resp = RouteResponse.from_model(r, prices, prediction)
         _convert_route_prices(route_resp, currency)
         routes.append(route_resp)
+        # Price history for mini chart (primary departure date only, last 50)
+        route_dep = r.departure_date
+        history = (
+            db.query(PriceRecord)
+            .filter(
+                PriceRecord.route_id == r.id,
+                (PriceRecord.departure_date == route_dep) | (PriceRecord.departure_date.is_(None)),
+            )
+            .order_by(PriceRecord.fetched_at.asc())
+            .limit(50)
+            .all()
+        )
+        route_histories[r.id] = [
+            {
+                "airline": p.airline,
+                "price": convert_price(p.price, p.currency or "USD", currency),
+                "fetched_at": p.fetched_at.isoformat() if p.fetched_at else "",
+                "cabin_type": p.cabin_type,
+            }
+            for p in history
+        ]
     return templates.TemplateResponse(
         "index.html",
         {
@@ -45,6 +67,7 @@ def index(request: Request, user: dict = Depends(require_login), db: Session = D
             "routes": routes,
             "user": user,
             "currency": currency,
+            "route_histories": route_histories,
             "CABIN_DISPLAY_NAMES": CABIN_DISPLAY_NAMES,
             "CURRENCY_SYMBOLS": CURRENCY_SYMBOLS,
         },
