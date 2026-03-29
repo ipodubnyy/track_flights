@@ -1,4 +1,6 @@
 import json
+import threading
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
@@ -17,22 +19,41 @@ router = APIRouter(prefix="/api", dependencies=[Depends(require_login)])
 
 
 def _latest_prices_per_cabin(db: Session, route_id: int) -> list[PriceRecord]:
-    """Return the most recent price record for each cabin_type on a route."""
+    """Return the most recent price record for each (departure_date, cabin_type) on a route."""
     all_prices = (
         db.query(PriceRecord)
         .filter(PriceRecord.route_id == route_id)
         .order_by(PriceRecord.fetched_at.desc())
         .all()
     )
-    seen: dict[str, PriceRecord] = {}
+    seen: dict[tuple, PriceRecord] = {}
     for p in all_prices:
-        if p.cabin_type not in seen:
-            seen[p.cabin_type] = p
-    return list(seen.values())
+        key = (p.departure_date, p.cabin_type)
+        if key not in seen:
+            seen[key] = p
+    return sorted(seen.values(), key=lambda p: (p.departure_date or date.min, p.cabin_type))
+
+
+def _run_check_in_background(app_state, route_id: int, get_db_func) -> None:
+    """Run price check in a background thread so route creation returns immediately."""
+    db_gen = get_db_func()
+    db = next(db_gen)
+    try:
+        route = db.query(TrackedRoute).filter(TrackedRoute.id == route_id).first()
+        if route:
+            app_state.price_tracker.check_route(db, route)
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Background check failed for route %s", route_id)
+    finally:
+        try:
+            next(db_gen)
+        except StopIteration:
+            pass
 
 
 @router.post("/routes", response_model=RouteResponse)
-def create_route(payload: RouteCreate, db: Session = Depends(get_db)):
+def create_route(payload: RouteCreate, request: Request, db: Session = Depends(get_db)):
     route = TrackedRoute(
         origin=payload.origin.upper(),
         destination=payload.destination.upper(),
@@ -47,6 +68,14 @@ def create_route(payload: RouteCreate, db: Session = Depends(get_db)):
     db.add(route)
     db.commit()
     db.refresh(route)
+
+    # Auto-check prices in background
+    threading.Thread(
+        target=_run_check_in_background,
+        args=(request.app.state, route.id, get_db),
+        daemon=True,
+    ).start()
+
     return RouteResponse.from_model(route)
 
 

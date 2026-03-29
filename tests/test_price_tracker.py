@@ -77,17 +77,19 @@ class TestCheckRoute:
         tracker = PriceTracker(amadeus, predictor, notifier)
         tracker.check_route(db_session, route)
 
-        amadeus.search_flights.assert_called_once_with(
-            origin="JFK",
-            destination="LAX",
-            departure_date="2026-06-15",
-            adults=1,
-            children=0,
-            infants=0,
-            cabin_class="economy",
-            airline_codes=None,
-            return_date=None,
-        )
+        # Now iterates over 7 date offsets, so search_flights is called 7 times
+        assert amadeus.search_flights.call_count == 7
+        # Check the center call (offset=0, index=3) has the expected args
+        center_call_kwargs = amadeus.search_flights.call_args_list[3][1]
+        assert center_call_kwargs["origin"] == "JFK"
+        assert center_call_kwargs["destination"] == "LAX"
+        assert center_call_kwargs["departure_date"] == "2026-06-15"
+        assert center_call_kwargs["adults"] == 1
+        assert center_call_kwargs["children"] == 0
+        assert center_call_kwargs["infants"] == 0
+        assert center_call_kwargs["cabin_class"] == "economy"
+        assert center_call_kwargs["airline_codes"] is None
+        assert center_call_kwargs["return_date"] is None
 
     def test_check_route_with_mixed_age_travelers(self, db_session):
         """Test that travelers are split into adults/children/infants by age."""
@@ -177,6 +179,8 @@ class TestCheckRoute:
         assert pred.predicted_best_buy_date is None
 
     def test_check_route_with_return_date(self, db_session, sample_route):
+        """Trip duration is preserved: dep 2026-06-15 + ret 2026-06-22 = 7 days.
+        For offset +3 the dep becomes 2026-06-18 and ret becomes 2026-06-25."""
         amadeus = MagicMock()
         amadeus.search_flights.return_value = []
         amadeus.resolve_airline_codes.return_value = []
@@ -196,13 +200,68 @@ class TestCheckRoute:
         tracker = PriceTracker(amadeus, predictor, notifier)
         tracker.check_route(db_session, sample_route)
 
-        # sample_route has return_date set
-        call_kwargs = amadeus.search_flights.call_args[1]
-        assert call_kwargs["return_date"] == "2026-06-22"
+        # sample_route has 2 cabin types, so 7 offsets * 2 cabins = 14 calls
+        assert amadeus.search_flights.call_count == 14
+
+        # The last call (offset +3): dep=2026-06-18, ret=2026-06-25 (7 day trip)
+        last_call_kwargs = amadeus.search_flights.call_args_list[-1][1]
+        assert last_call_kwargs["departure_date"] == "2026-06-18"
+        assert last_call_kwargs["return_date"] == "2026-06-25"
+
+        # The center call (offset 0) is at index 6 (each offset has 2 cabin calls)
+        center_call_kwargs = amadeus.search_flights.call_args_list[6][1]
+        assert center_call_kwargs["departure_date"] == "2026-06-15"
+        assert center_call_kwargs["return_date"] == "2026-06-22"
 
         call_args = predictor.predict.call_args
         route_info = call_args[0][0]
         assert route_info["return_date"] == "2026-06-22"
+
+    def test_check_route_skips_past_dates(self, db_session):
+        """When departure_date is today, offsets -3,-2,-1 are in the past and skipped."""
+        from unittest.mock import patch as mock_patch
+        today = date.today()
+        route = TrackedRoute(
+            origin="JFK",
+            destination="LAX",
+            departure_date=today,
+            return_date=None,
+            is_round_trip=False,
+            airlines="[]",
+            alliances="[]",
+            cabin_types="[]",
+            travelers="[]",
+            is_active=True,
+            created_at=datetime(2026, 1, 1),
+        )
+        db_session.add(route)
+        db_session.commit()
+        db_session.refresh(route)
+
+        amadeus = MagicMock()
+        amadeus.search_flights.return_value = []
+        amadeus.resolve_airline_codes.return_value = []
+
+        predictor = MagicMock()
+        predictor.predict.return_value = {
+            "trend": "stable",
+            "summary": "ok",
+            "buy_recommendation": "uncertain",
+            "predicted_best_buy_date": None,
+            "confidence": 0.0,
+        }
+
+        notifier = MagicMock()
+        notifier.format_price_alert.return_value = "msg"
+
+        tracker = PriceTracker(amadeus, predictor, notifier)
+        tracker.check_route(db_session, route)
+
+        # Offsets -3,-2,-1 are past, so only 0,1,2,3 = 4 calls
+        assert amadeus.search_flights.call_count == 4
+        # First call should be for today (offset 0)
+        first_call_kwargs = amadeus.search_flights.call_args_list[0][1]
+        assert first_call_kwargs["departure_date"] == today.isoformat()
 
 
 class TestCheckAllRoutes:

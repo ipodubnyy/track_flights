@@ -25,8 +25,8 @@
     <h2>Current Prices (total for all travelers)</h2>
     <div class="current-prices-grid">
         {% for p in route.latest_prices %}
-        <div class="current-price-card">
-            <span class="label">{{ p.cabin_type }}</span>
+        <div class="current-price-card{% if p.departure_date and p.departure_date.isoformat() == route.departure_date.isoformat() %} current-price-exact{% endif %}">
+            <span class="label">{{ p.departure_date }} / {{ p.cabin_type }}</span>
             <span class="current-price-amount">{{ "%.0f" | format(p.price) }} {{ p.currency }}</span>
             <span class="current-price-airline">{{ p.airline }}</span>
         </div>
@@ -70,12 +70,13 @@
     </div>
     <table>
         <thead>
-            <tr><th>Date</th><th>Airline</th><th>Cabin</th><th>Total Price</th><th>Currency</th></tr>
+            <tr><th>Checked</th><th>Departure</th><th>Airline</th><th>Cabin</th><th>Total Price</th><th>Currency</th></tr>
         </thead>
         <tbody>
             {% for p in all_prices %}
             <tr>
                 <td>{{ p.fetched_at.strftime('%Y-%m-%d %H:%M') if p.fetched_at else 'N/A' }}</td>
+                <td>{{ p.departure_date or 'N/A' }}</td>
                 <td>{{ p.airline }}</td>
                 <td>{{ p.cabin_type }}</td>
                 <td>{{ "%.2f" | format(p.price) }}</td>

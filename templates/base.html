@@ -14,6 +14,7 @@
             {% if user.picture %}<img src="{{ user.picture }}" class="avatar" alt="">{% endif %}
             <span class="nav-name">{{ user.name }}</span>
             <a href="/logout" class="nav-logout">Sign out</a>
+            <a href="#" class="nav-logout nav-danger" onclick="if(confirm('Delete all your data and sign out?')){fetch('/profile',{method:'DELETE'}).then(()=>location.href='/login')}">Delete profile</a>
         </div>
         {% endif %}
     </nav>

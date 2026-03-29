@@ -53,6 +53,7 @@ class TestAppSetup:
             "/login/google",
             "/auth/callback",
             "/logout",
+            "/profile",
         ]
         for ep in expected:
             assert ep in paths, f"Missing endpoint: {ep}"

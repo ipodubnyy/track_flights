@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_CHAT_ID: str = ""
     DATABASE_URL: str = "sqlite:///./track_flights.db"
-    CHECK_INTERVAL_HOURS: int = 6
+    CHECK_INTERVAL_HOURS: int = 4
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     SECRET_KEY: str = "change-me-to-a-random-secret"

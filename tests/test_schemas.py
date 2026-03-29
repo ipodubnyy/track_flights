@@ -97,6 +97,7 @@ class TestRouteResponse:
 
         mock_price = MagicMock()
         mock_price.id = 10
+        mock_price.departure_date = date(2026, 6, 15)
         mock_price.cabin_type = "economy"
         mock_price.airline = "AA"
         mock_price.price = 350.0
@@ -130,6 +131,19 @@ class TestPriceResponse:
             fetched_at=datetime(2026, 1, 1),
         )
         assert pr.price == 350.0
+        assert pr.departure_date is None
+
+    def test_validation_with_departure_date(self):
+        pr = PriceResponse(
+            id=2,
+            departure_date=date(2026, 6, 15),
+            cabin_type="business",
+            airline="UA",
+            price=1200.0,
+            currency="USD",
+            fetched_at=datetime(2026, 1, 1),
+        )
+        assert pr.departure_date == date(2026, 6, 15)
 
 
 class TestPredictionResponse:

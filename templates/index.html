@@ -14,7 +14,7 @@
             <th>Airlines / Alliances</th>
             <th>Travelers</th>
             <th>Status</th>
-            <th>Latest Price</th>
+            <th>Latest Prices (total)</th>
             <th>Trend</th>
             <th>Actions</th>
         </tr>
@@ -42,9 +42,9 @@
                 {% if r.latest_prices %}
                     {% for p in r.latest_prices %}
                     <div class="price-line">
+                        <span class="price-date">{{ p.departure_date }}</span>
                         <span class="price-cabin">{{ p.cabin_type }}</span>
                         <span class="price-amount">{{ "%.0f" | format(p.price) }} {{ p.currency }}</span>
-                        <span class="price-note">total</span>
                     </div>
                     {% endfor %}
                 {% else %}

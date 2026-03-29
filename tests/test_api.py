@@ -1,8 +1,9 @@
 import json
 from datetime import date, datetime
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from app.models import Prediction, PriceRecord, TrackedRoute
+from app.routers.api import _run_check_in_background
 
 
 class TestCreateRoute:
@@ -92,6 +93,44 @@ class TestGetRoutePrices:
     def test_get_prices_not_found(self, client):
         resp = client.get("/api/routes/9999/prices")
         assert resp.status_code == 404
+
+
+class TestRunCheckInBackground:
+    def test_run_check_in_background_success(self, db_session, sample_route):
+        mock_tracker = MagicMock()
+        app_state = MagicMock()
+        app_state.price_tracker = mock_tracker
+
+        def fake_get_db():
+            yield db_session
+
+        _run_check_in_background(app_state, sample_route.id, fake_get_db)
+        mock_tracker.check_route.assert_called_once()
+        call_args = mock_tracker.check_route.call_args
+        assert call_args[0][1].id == sample_route.id
+
+    def test_run_check_in_background_route_not_found(self, db_session):
+        mock_tracker = MagicMock()
+        app_state = MagicMock()
+        app_state.price_tracker = mock_tracker
+
+        def fake_get_db():
+            yield db_session
+
+        _run_check_in_background(app_state, 99999, fake_get_db)
+        mock_tracker.check_route.assert_not_called()
+
+    def test_run_check_in_background_exception(self, db_session, sample_route):
+        mock_tracker = MagicMock()
+        mock_tracker.check_route.side_effect = Exception("boom")
+        app_state = MagicMock()
+        app_state.price_tracker = mock_tracker
+
+        def fake_get_db():
+            yield db_session
+
+        # Should not raise
+        _run_check_in_background(app_state, sample_route.id, fake_get_db)
 
 
 class TestGetRoutePredictions:

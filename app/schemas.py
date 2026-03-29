@@ -20,6 +20,7 @@ class RouteCreate(BaseModel):
 
 class PriceResponse(BaseModel):
     id: int
+    departure_date: date | None = None
     cabin_type: str
     airline: str
     price: float

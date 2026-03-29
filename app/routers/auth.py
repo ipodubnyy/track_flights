@@ -4,7 +4,11 @@ from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.orm import Session
+
 from app.config import Settings, get_settings
+from app.database import get_db
+from app.models import Prediction, PriceRecord, TrackedRoute
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -79,3 +83,20 @@ async def auth_callback(request: Request, settings: Settings = Depends(get_setti
 def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/login", status_code=302)
+
+
+@router.delete("/profile")
+def delete_profile(
+    request: Request,
+    user: dict = Depends(require_login),
+    db: Session = Depends(get_db),
+):
+    """Delete all routes, prices, predictions, and sign out."""
+    routes = db.query(TrackedRoute).all()
+    for route in routes:
+        db.query(PriceRecord).filter(PriceRecord.route_id == route.id).delete()
+        db.query(Prediction).filter(Prediction.route_id == route.id).delete()
+    db.query(TrackedRoute).delete()
+    db.commit()
+    request.session.clear()
+    return {"ok": True}

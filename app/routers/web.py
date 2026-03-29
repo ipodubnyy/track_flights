@@ -59,6 +59,7 @@ def route_detail(route_id: int, request: Request, user: dict = Depends(require_l
             "all_prices": [
                 {
                     "id": p.id,
+                    "departure_date": p.departure_date,
                     "cabin_type": p.cabin_type,
                     "airline": p.airline,
                     "price": p.price,

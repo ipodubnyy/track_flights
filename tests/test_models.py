@@ -104,6 +104,36 @@ class TestPriceRecord:
         assert sample_prices[0].currency == "USD"
         assert sample_prices[1].price == 1200.0
 
+    def test_departure_date(self, db_session, sample_route):
+        record = PriceRecord(
+            route_id=sample_route.id,
+            departure_date=date(2026, 6, 15),
+            cabin_type="economy",
+            airline="AA",
+            price=300.0,
+            currency="USD",
+            fetched_at=datetime(2026, 1, 1),
+        )
+        db_session.add(record)
+        db_session.commit()
+        db_session.refresh(record)
+        assert record.departure_date == date(2026, 6, 15)
+
+    def test_departure_date_nullable(self, db_session, sample_route):
+        record = PriceRecord(
+            route_id=sample_route.id,
+            departure_date=None,
+            cabin_type="economy",
+            airline="AA",
+            price=300.0,
+            currency="USD",
+            fetched_at=datetime(2026, 1, 1),
+        )
+        db_session.add(record)
+        db_session.commit()
+        db_session.refresh(record)
+        assert record.departure_date is None
+
 
 class TestPrediction:
     def test_creation(self, sample_prediction):

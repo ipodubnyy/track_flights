@@ -72,6 +72,7 @@ class PriceRecord(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     route_id = Column(Integer, ForeignKey("tracked_routes.id"), nullable=False)
+    departure_date = Column(Date, nullable=True)  # actual date checked (may differ from route by ±3 days)
     cabin_type = Column(String, nullable=False)
     airline = Column(String, nullable=False)
     price = Column(Float, nullable=False)

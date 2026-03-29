@@ -212,3 +212,29 @@ class TestLogout:
             resp = c.get("/logout", follow_redirects=False)
             assert resp.status_code == 302
             assert resp.headers["location"] == "/login"
+
+
+class TestDeleteProfile:
+    def test_delete_profile(self, client, db_session, sample_route, sample_prices, sample_prediction):
+        """DELETE /profile deletes all routes, prices, predictions and returns ok."""
+        from app.models import TrackedRoute, PriceRecord, Prediction
+
+        # Verify data exists before deletion
+        assert db_session.query(TrackedRoute).count() == 1
+        assert db_session.query(PriceRecord).count() == 2
+        assert db_session.query(Prediction).count() == 1
+
+        resp = client.delete("/profile")
+        assert resp.status_code == 200
+        assert resp.json() == {"ok": True}
+
+        # All data should be deleted
+        assert db_session.query(TrackedRoute).count() == 0
+        assert db_session.query(PriceRecord).count() == 0
+        assert db_session.query(Prediction).count() == 0
+
+    def test_delete_profile_empty(self, client, db_session):
+        """DELETE /profile works even when there's no data."""
+        resp = client.delete("/profile")
+        assert resp.status_code == 200
+        assert resp.json() == {"ok": True}

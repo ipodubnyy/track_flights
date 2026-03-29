@@ -11,7 +11,7 @@ class TestSettings:
         )
         assert s.FLIGHTAPI_KEY == ""
         assert s.DATABASE_URL == "sqlite:///./track_flights.db"
-        assert s.CHECK_INTERVAL_HOURS == 6
+        assert s.CHECK_INTERVAL_HOURS == 4
         assert s.GOOGLE_CLIENT_ID == ""
         assert s.GOOGLE_CLIENT_SECRET == ""
         assert s.SECRET_KEY == "change-me-to-a-random-secret"
