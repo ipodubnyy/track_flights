@@ -109,9 +109,16 @@ class TestLoginGoogle:
         mock_oauth.google = mock_google
 
         app = self._make_app()
+        mock_settings = MagicMock()
+        mock_settings.BASE_URL = "https://flights.cattom.net:5498"
+        app.dependency_overrides[get_settings] = lambda: mock_settings
         with TestClient(app) as c:
             resp = c.get("/login/google", follow_redirects=False)
             assert resp.status_code == 307 or resp.status_code == 302
+            # Verify the redirect_uri uses BASE_URL
+            call_args = mock_google.authorize_redirect.call_args
+            assert call_args[0][1] == "https://flights.cattom.net:5498/auth/callback"
+        app.dependency_overrides.clear()
 
 
 class TestAuthCallback:

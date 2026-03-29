@@ -4,8 +4,6 @@ from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from starlette.config import Config
-
 from app.config import Settings, get_settings
 
 router = APIRouter()
@@ -48,8 +46,8 @@ def login_page(request: Request):
 
 
 @router.get("/login/google")
-async def login_google(request: Request):
-    redirect_uri = request.url_for("auth_callback")
+async def login_google(request: Request, settings: Settings = Depends(get_settings)):
+    redirect_uri = settings.BASE_URL + "/auth/callback"
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 

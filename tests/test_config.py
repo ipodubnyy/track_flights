@@ -16,6 +16,7 @@ class TestSettings:
         assert s.GOOGLE_CLIENT_SECRET == ""
         assert s.SECRET_KEY == "change-me-to-a-random-secret"
         assert s.ALLOWED_EMAILS == ""
+        assert s.BASE_URL == "https://flights.cattom.net:5498"
 
     def test_custom_values(self):
         s = Settings(

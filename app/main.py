@@ -51,7 +51,12 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Flight Price Tracker", lifespan=lifespan)
 
 settings = get_settings()
-app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.SECRET_KEY,
+    https_only=True,
+    same_site="lax",
+)
 
 
 @app.exception_handler(_LoginRequired)

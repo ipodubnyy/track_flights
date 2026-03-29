@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     SECRET_KEY: str = "change-me-to-a-random-secret"
     ALLOWED_EMAILS: str = ""  # comma-separated; empty = allow all Google accounts
+    BASE_URL: str = "https://flights.cattom.net:5498"
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
