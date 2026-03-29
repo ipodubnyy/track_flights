@@ -6,7 +6,7 @@
     <title>{% block title %}{{ t('app_name') }}{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=2">
 </head>
 <body>
     <nav>
@@ -42,6 +42,6 @@
         <p>{% if currency == 'RUB' %}{{ t('prices_shown_in_rub') }}{% else %}{{ t('prices_shown_in_usd') }}{% endif %}</p>
     </footer>
     <script>var APP_LANG = '{{ lang }}';</script>
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=2"></script>
 </body>
 </html>
