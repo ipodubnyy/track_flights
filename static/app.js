@@ -1,3 +1,8 @@
+function getCsrfToken() {
+    var match = document.cookie.match('(^|;)\\s*csrf_token=([^;]+)');
+    return match ? match[2] : '';
+}
+
 /* Close user dropdown when clicking outside */
 document.addEventListener('click', function(e) {
     document.querySelectorAll('.user-menu.open').forEach(function(m) {
@@ -9,7 +14,7 @@ document.addEventListener('click', function(e) {
 async function setCurrency(cur) {
     await fetch('/api/currency', {
         method: 'PATCH',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', 'x-csrf-token': getCsrfToken()},
         body: JSON.stringify({currency: cur}),
     });
     location.reload();
@@ -40,7 +45,7 @@ async function addRoute(e) {
     };
     var res = await fetch('/api/routes', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', 'x-csrf-token': getCsrfToken()},
         body: JSON.stringify(body),
     });
     if (res.ok) location.reload();
@@ -49,7 +54,7 @@ async function addRoute(e) {
 
 /* Route actions */
 async function toggleRoute(id) {
-    await fetch('/api/routes/' + id + '/toggle', {method: 'PATCH'});
+    await fetch('/api/routes/' + id + '/toggle', {method: 'PATCH', headers: {'x-csrf-token': getCsrfToken()}});
     location.reload();
 }
 
@@ -57,13 +62,13 @@ async function checkRoute(id) {
     var btn = event.target;
     btn.disabled = true;
     btn.textContent = 'Checking\u2026';
-    await fetch('/api/routes/' + id + '/check', {method: 'POST'});
+    await fetch('/api/routes/' + id + '/check', {method: 'POST', headers: {'x-csrf-token': getCsrfToken()}});
     location.reload();
 }
 
 async function deleteRoute(id) {
     if (confirm('Delete this route and all its data?')) {
-        await fetch('/api/routes/' + id, {method: 'DELETE'});
+        await fetch('/api/routes/' + id, {method: 'DELETE', headers: {'x-csrf-token': getCsrfToken()}});
         location.reload();
     }
 }
@@ -172,7 +177,7 @@ async function saveEdit(e) {
 
     var res = await fetch('/api/routes/' + id, {
         method: 'PATCH',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'application/json', 'x-csrf-token': getCsrfToken()},
         body: JSON.stringify(body),
     });
     if (res.ok) location.reload();

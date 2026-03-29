@@ -79,7 +79,7 @@ async def auth_callback(request: Request, settings: Settings = Depends(get_setti
     return RedirectResponse(url="/", status_code=302)
 
 
-@router.get("/logout")
+@router.post("/logout")
 def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/login", status_code=302)

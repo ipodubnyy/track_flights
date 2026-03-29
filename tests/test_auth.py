@@ -209,7 +209,7 @@ class TestLogout:
     def test_logout_redirects_to_login(self):
         app = self._make_app()
         with TestClient(app) as c:
-            resp = c.get("/logout", follow_redirects=False)
+            resp = c.post("/logout", follow_redirects=False)
             assert resp.status_code == 302
             assert resp.headers["location"] == "/login"
 

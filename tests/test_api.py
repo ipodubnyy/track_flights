@@ -16,6 +16,23 @@ class TestCreateRoute:
         assert data["is_round_trip"] is True
         assert data["airlines"] == ["AA", "UA"]
 
+    def test_create_route_at_50_limit(self, client, db_session, sample_route_data):
+        """Creating a route when already at 50 routes should return 400."""
+        for i in range(50):
+            route = TrackedRoute(
+                origin="AAA",
+                destination="BBB",
+                departure_date=date(2026, 6, 15),
+                is_active=True,
+                created_at=datetime(2026, 1, 1),
+            )
+            db_session.add(route)
+        db_session.commit()
+
+        resp = client.post("/api/routes", json=sample_route_data)
+        assert resp.status_code == 400
+        assert "50" in resp.json()["detail"]
+
 
 class TestListRoutes:
     def test_list_routes_empty(self, client):
@@ -72,6 +89,9 @@ class TestToggleRoute:
 
 class TestCheckRoute:
     def test_check_route_exists(self, client, db_session, sample_route):
+        from app.routers.api import _check_timestamps
+        _check_timestamps.clear()
+
         resp = client.post(f"/api/routes/{sample_route.id}/check")
         assert resp.status_code == 200
         # price_tracker.check_route was called (it's a mock)
@@ -81,6 +101,18 @@ class TestCheckRoute:
     def test_check_route_not_found(self, client):
         resp = client.post("/api/routes/9999/check")
         assert resp.status_code == 404
+
+    def test_check_route_rate_limited(self, client, db_session, sample_route):
+        """Checking a route twice within 60s should return 429."""
+        from app.routers.api import _check_timestamps
+        _check_timestamps.clear()
+
+        resp1 = client.post(f"/api/routes/{sample_route.id}/check")
+        assert resp1.status_code == 200
+
+        resp2 = client.post(f"/api/routes/{sample_route.id}/check")
+        assert resp2.status_code == 429
+        assert "wait" in resp2.json()["detail"].lower()
 
 
 class TestGetRoutePrices:

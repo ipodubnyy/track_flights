@@ -69,6 +69,10 @@ def client(override_get_db):
     app.dependency_overrides[require_login] = lambda: fake_user
 
     with TestClient(app, raise_server_exceptions=False) as c:
+        # Set CSRF token cookie so POST/PATCH/DELETE requests pass CSRF check
+        csrf_token = "test-csrf-token-for-testing"
+        c.cookies.set("csrf_token", csrf_token)
+        c.headers.update({"x-csrf-token": csrf_token})
         yield c
 
     app.dependency_overrides.clear()

@@ -27,6 +27,11 @@ class TestAppSetup:
     def test_app_title(self):
         assert app.title == "Flight Price Tracker"
 
+    def test_docs_disabled(self):
+        assert app.docs_url is None
+        assert app.redoc_url is None
+        assert app.openapi_url is None
+
     def test_app_has_auth_routes(self):
         route_paths = [getattr(r, "path", "") for r in app.routes]
         assert "/login" in route_paths
@@ -46,6 +51,7 @@ class TestAppSetup:
             "/api/routes/{route_id}/check",
             "/api/routes/{route_id}/prices",
             "/api/routes/{route_id}/predictions",
+            "/api/currency",
             "/",
             "/route/{route_id}",
             "/static",
@@ -177,3 +183,84 @@ class TestLifespan:
             pass
 
         mock_stop_scheduler.assert_called_once_with(mock_scheduler)
+
+
+class TestCSRFMiddleware:
+    """Tests for the CSRF middleware in main.py."""
+
+    def _setup_app(self):
+        """Set up test lifespan and auth bypass, return original lifespan for cleanup."""
+        from app.routers.auth import require_login
+
+        @asynccontextmanager
+        async def test_lifespan(app_instance: FastAPI):
+            app_instance.state.price_tracker = MagicMock()
+            yield
+
+        original_lifespan = app.router.lifespan_context
+        app.router.lifespan_context = test_lifespan
+        fake_user = {"email": "test@example.com", "name": "Test", "picture": ""}
+        app.dependency_overrides[require_login] = lambda: fake_user
+        return original_lifespan
+
+    def test_post_without_csrf_token_returns_403(self):
+        """A POST without the CSRF header should be rejected with 403."""
+        original_lifespan = self._setup_app()
+        try:
+            with TestClient(app, raise_server_exceptions=False) as c:
+                c.cookies.set("csrf_token", "some-token")
+                resp = c.post("/logout")
+                assert resp.status_code == 403
+                assert "CSRF" in resp.json()["detail"]
+        finally:
+            app.dependency_overrides.clear()
+            app.router.lifespan_context = original_lifespan
+
+    def test_post_with_valid_csrf_token_passes(self):
+        """A POST with matching CSRF cookie and header should succeed."""
+        original_lifespan = self._setup_app()
+        try:
+            with TestClient(app, raise_server_exceptions=False) as c:
+                token = "valid-test-token"
+                c.cookies.set("csrf_token", token)
+                c.headers.update({"x-csrf-token": token})
+                resp = c.post("/logout", follow_redirects=False)
+                assert resp.status_code == 302
+        finally:
+            app.dependency_overrides.clear()
+            app.router.lifespan_context = original_lifespan
+
+    def test_get_sets_csrf_cookie(self):
+        """A GET request should always have csrf_token cookie set in response."""
+        original_lifespan = self._setup_app()
+        try:
+            with TestClient(app, raise_server_exceptions=False) as c:
+                resp = c.get("/login")
+                assert "csrf_token" in resp.cookies
+        finally:
+            app.dependency_overrides.clear()
+            app.router.lifespan_context = original_lifespan
+
+    def test_get_without_csrf_cookie_generates_new_one(self):
+        """A GET without existing csrf cookie generates a new token (covers line 77)."""
+        original_lifespan = self._setup_app()
+        try:
+            with TestClient(app, raise_server_exceptions=False, cookies={}) as c:
+                resp = c.get("/login")
+                assert resp.status_code == 200
+                assert "csrf_token" in resp.cookies
+                assert len(resp.cookies["csrf_token"]) == 64
+        finally:
+            app.dependency_overrides.clear()
+            app.router.lifespan_context = original_lifespan
+
+    def test_csrf_exempt_path_callback(self):
+        """Requests to /auth/callback should bypass CSRF check."""
+        original_lifespan = self._setup_app()
+        try:
+            with TestClient(app, raise_server_exceptions=False) as c:
+                resp = c.get("/auth/callback")
+                assert resp.status_code != 403
+        finally:
+            app.dependency_overrides.clear()
+            app.router.lifespan_context = original_lifespan

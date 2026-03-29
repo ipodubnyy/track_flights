@@ -1,5 +1,6 @@
 import json
 import threading
+import time
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -18,6 +19,9 @@ from app.schemas import (
 )
 
 router = APIRouter(prefix="/api", dependencies=[Depends(require_login)])
+
+_check_timestamps: dict[int, float] = {}
+CHECK_COOLDOWN_SECONDS = 60  # min 60s between checks per route
 
 
 def _latest_prices_per_cabin(db: Session, route_id: int) -> list[PriceRecord]:
@@ -62,6 +66,9 @@ def _run_check_in_background(app_state, route_id: int, get_db_func) -> None:
 
 @router.post("/routes", response_model=RouteResponse)
 def create_route(payload: RouteCreate, request: Request, db: Session = Depends(get_db)):
+    route_count = db.query(TrackedRoute).count()
+    if route_count >= 50:
+        raise HTTPException(status_code=400, detail="Maximum of 50 routes reached")
     route = TrackedRoute(
         origin=payload.origin.upper(),
         destination=payload.destination.upper(),
@@ -144,6 +151,12 @@ def check_route(route_id: int, request: Request, db: Session = Depends(get_db)):
     route = db.query(TrackedRoute).filter(TrackedRoute.id == route_id).first()
     if not route:
         raise HTTPException(status_code=404, detail="Route not found")
+
+    now = time.time()
+    last_check = _check_timestamps.get(route_id, 0)
+    if now - last_check < CHECK_COOLDOWN_SECONDS:
+        raise HTTPException(status_code=429, detail="Please wait before checking again")
+    _check_timestamps[route_id] = now
 
     price_tracker = request.app.state.price_tracker
     pref = db.query(UserPreference).first()

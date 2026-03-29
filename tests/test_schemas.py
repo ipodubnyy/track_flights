@@ -1,11 +1,15 @@
 from datetime import date, datetime
 from unittest.mock import MagicMock, patch
 
+import pytest
+from pydantic import ValidationError
+
 from app.schemas import (
     PredictionResponse,
     PriceResponse,
     RouteCreate,
     RouteResponse,
+    RouteUpdate,
     convert_price,
     fetch_exchange_rate,
     _exchange_cache,
@@ -203,3 +207,142 @@ class TestConvertPrice:
 
     def test_unknown_currency_pair(self):
         assert convert_price(100.0, "EUR", "GBP") == 100.0
+
+
+class TestRouteCreateValidateIata:
+    def test_valid_iata(self):
+        rc = RouteCreate(origin="jfk", destination="lax", departure_date="2026-06-15")
+        assert rc.origin == "JFK"
+        assert rc.destination == "LAX"
+
+    def test_invalid_iata_too_long(self):
+        with pytest.raises(ValidationError, match="3-letter IATA"):
+            RouteCreate(origin="JFKX", destination="LAX", departure_date="2026-06-15")
+
+    def test_invalid_iata_numbers(self):
+        with pytest.raises(ValidationError, match="3-letter IATA"):
+            RouteCreate(origin="J2K", destination="LAX", departure_date="2026-06-15")
+
+    def test_invalid_iata_empty(self):
+        with pytest.raises(ValidationError, match="3-letter IATA"):
+            RouteCreate(origin="", destination="LAX", departure_date="2026-06-15")
+
+    def test_invalid_iata_two_letters(self):
+        with pytest.raises(ValidationError, match="3-letter IATA"):
+            RouteCreate(origin="JF", destination="LAX", departure_date="2026-06-15")
+
+
+class TestRouteCreateValidateCabins:
+    def test_valid_cabin_types(self):
+        rc = RouteCreate(
+            origin="JFK", destination="LAX", departure_date="2026-06-15",
+            cabin_types=["economy", "business", "first", "premium_economy", "economy_plus"],
+        )
+        assert len(rc.cabin_types) == 5
+
+    def test_invalid_cabin_type(self):
+        with pytest.raises(ValidationError, match="Invalid cabin type"):
+            RouteCreate(
+                origin="JFK", destination="LAX", departure_date="2026-06-15",
+                cabin_types=["coach"],
+            )
+
+
+class TestRouteCreateValidateTravelers:
+    def test_too_many_travelers(self):
+        with pytest.raises(ValidationError, match="Maximum 9"):
+            RouteCreate(
+                origin="JFK", destination="LAX", departure_date="2026-06-15",
+                travelers=[30] * 10,
+            )
+
+    def test_empty_travelers(self):
+        with pytest.raises(ValidationError, match="At least 1"):
+            RouteCreate(
+                origin="JFK", destination="LAX", departure_date="2026-06-15",
+                travelers=[],
+            )
+
+    def test_negative_age(self):
+        with pytest.raises(ValidationError, match="Invalid age"):
+            RouteCreate(
+                origin="JFK", destination="LAX", departure_date="2026-06-15",
+                travelers=[-1],
+            )
+
+    def test_age_over_120(self):
+        with pytest.raises(ValidationError, match="Invalid age"):
+            RouteCreate(
+                origin="JFK", destination="LAX", departure_date="2026-06-15",
+                travelers=[121],
+            )
+
+
+class TestRouteCreateValidateAirlines:
+    def test_valid_airline_codes(self):
+        rc = RouteCreate(
+            origin="JFK", destination="LAX", departure_date="2026-06-15",
+            airlines=["AA", "UAL"],
+        )
+        assert rc.airlines == ["AA", "UAL"]
+
+    def test_invalid_airline_too_long(self):
+        with pytest.raises(ValidationError, match="Invalid airline code"):
+            RouteCreate(
+                origin="JFK", destination="LAX", departure_date="2026-06-15",
+                airlines=["AAAA"],
+            )
+
+    def test_invalid_airline_numbers(self):
+        with pytest.raises(ValidationError, match="Invalid airline code"):
+            RouteCreate(
+                origin="JFK", destination="LAX", departure_date="2026-06-15",
+                airlines=["A1"],
+            )
+
+    def test_invalid_airline_single_char(self):
+        with pytest.raises(ValidationError, match="Invalid airline code"):
+            RouteCreate(
+                origin="JFK", destination="LAX", departure_date="2026-06-15",
+                airlines=["A"],
+            )
+
+
+class TestRouteUpdateValidateCabins:
+    def test_none_passthrough(self):
+        ru = RouteUpdate(cabin_types=None)
+        assert ru.cabin_types is None
+
+    def test_valid_cabins(self):
+        ru = RouteUpdate(cabin_types=["business"])
+        assert ru.cabin_types == ["business"]
+
+    def test_invalid_cabin(self):
+        with pytest.raises(ValidationError, match="Invalid cabin type"):
+            RouteUpdate(cabin_types=["invalid"])
+
+
+class TestRouteUpdateValidateTravelers:
+    def test_none_passthrough(self):
+        ru = RouteUpdate(travelers=None)
+        assert ru.travelers is None
+
+    def test_valid_travelers(self):
+        ru = RouteUpdate(travelers=[30, 25])
+        assert ru.travelers == [30, 25]
+
+    def test_too_many(self):
+        with pytest.raises(ValidationError, match="Maximum 9"):
+            RouteUpdate(travelers=[30] * 10)
+
+    def test_empty(self):
+        with pytest.raises(ValidationError, match="At least 1"):
+            RouteUpdate(travelers=[])
+
+    def test_negative_age(self):
+        with pytest.raises(ValidationError, match="Invalid age"):
+            RouteUpdate(travelers=[-5])
+
+    def test_age_over_120(self):
+        with pytest.raises(ValidationError, match="Invalid age"):
+            RouteUpdate(travelers=[200])

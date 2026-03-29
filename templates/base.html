@@ -24,8 +24,8 @@
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M3 5l3 3 3-3"/></svg>
                 </button>
                 <div class="user-dropdown">
-                    <a href="/logout">Sign out</a>
-                    <a href="#" class="dropdown-danger" onclick="event.preventDefault();if(confirm('Delete all your data and sign out?')){fetch('/profile',{method:'DELETE'}).then(()=>location.href='/login')}">Delete profile</a>
+                    <a href="#" onclick="event.preventDefault();fetch('/logout',{method:'POST',headers:{'x-csrf-token':getCsrfToken()}}).then(function(){location.href='/login'})">Sign out</a>
+                    <a href="#" class="dropdown-danger" onclick="event.preventDefault();if(confirm('Delete all your data and sign out?')){fetch('/profile',{method:'DELETE',headers:{'x-csrf-token':getCsrfToken()}}).then(()=>location.href='/login')}">Delete profile</a>
                 </div>
             </div>
         </div>

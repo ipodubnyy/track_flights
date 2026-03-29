@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 CABIN_DISPLAY_NAMES = {
@@ -64,6 +64,31 @@ class RouteUpdate(BaseModel):
     return_date: date | None = None
     is_round_trip: bool | None = None
 
+    @field_validator("cabin_types")
+    @classmethod
+    def validate_cabins(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return v
+        valid = {"economy", "economy_plus", "premium_economy", "business", "first"}
+        for c in v:
+            if c not in valid:
+                raise ValueError(f"Invalid cabin type: {c}")
+        return v
+
+    @field_validator("travelers")
+    @classmethod
+    def validate_travelers(cls, v: list[int] | None) -> list[int] | None:
+        if v is None:
+            return v
+        if len(v) > 9:
+            raise ValueError("Maximum 9 travelers")
+        if len(v) < 1:
+            raise ValueError("At least 1 traveler required")
+        for age in v:
+            if age < 0 or age > 120:
+                raise ValueError(f"Invalid age: {age}")
+        return v
+
 
 class RouteCreate(BaseModel):
     origin: str
@@ -75,6 +100,44 @@ class RouteCreate(BaseModel):
     alliances: list[str] = []
     cabin_types: list[str] = []
     travelers: list[int] = [30]
+
+    @field_validator("origin", "destination")
+    @classmethod
+    def validate_iata(cls, v: str) -> str:
+        v = v.strip().upper()
+        if not v.isalpha() or len(v) != 3:
+            raise ValueError("Must be a 3-letter IATA code")
+        return v
+
+    @field_validator("cabin_types")
+    @classmethod
+    def validate_cabins(cls, v: list[str]) -> list[str]:
+        valid = {"economy", "economy_plus", "premium_economy", "business", "first"}
+        for c in v:
+            if c not in valid:
+                raise ValueError(f"Invalid cabin type: {c}")
+        return v
+
+    @field_validator("travelers")
+    @classmethod
+    def validate_travelers(cls, v: list[int]) -> list[int]:
+        if len(v) > 9:
+            raise ValueError("Maximum 9 travelers")
+        if len(v) < 1:
+            raise ValueError("At least 1 traveler required")
+        for age in v:
+            if age < 0 or age > 120:
+                raise ValueError(f"Invalid age: {age}")
+        return v
+
+    @field_validator("airlines")
+    @classmethod
+    def validate_airlines(cls, v: list[str]) -> list[str]:
+        for code in v:
+            code = code.strip().upper()
+            if not code.isalpha() or len(code) < 2 or len(code) > 3:
+                raise ValueError(f"Invalid airline code: {code}")
+        return [c.strip().upper() for c in v]
 
 
 class PriceResponse(BaseModel):
