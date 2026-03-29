@@ -95,3 +95,10 @@ class Prediction(Base):
     created_at = Column(DateTime, default=func.now())
 
     route = relationship("TrackedRoute", back_populates="predictions")
+
+
+class UserPreference(Base):
+    __tablename__ = "user_preferences"
+
+    id = Column(Integer, primary_key=True, default=1)
+    currency = Column(String, default="USD")  # "USD" or "RUB"

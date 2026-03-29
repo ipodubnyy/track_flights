@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
 from app.database import get_db
-from app.models import Prediction, PriceRecord, TrackedRoute
+from app.models import Prediction, PriceRecord, TrackedRoute, UserPreference
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -97,6 +97,7 @@ def delete_profile(
         db.query(PriceRecord).filter(PriceRecord.route_id == route.id).delete()
         db.query(Prediction).filter(Prediction.route_id == route.id).delete()
     db.query(TrackedRoute).delete()
+    db.query(UserPreference).delete()
     db.commit()
     request.session.clear()
     return {"ok": True}

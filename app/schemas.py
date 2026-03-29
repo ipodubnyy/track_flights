@@ -6,6 +6,34 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict
 
 
+CABIN_DISPLAY_NAMES = {
+    "economy": "Economy",
+    "economy_plus": "Economy Plus",
+    "premium_economy": "Premium Economy",
+    "business": "Business",
+    "first": "First",
+}
+
+CURRENCY_SYMBOLS = {
+    "USD": ("$", "before"),  # $123
+    "RUB": ("₽", "after"),   # 123 ₽
+}
+
+
+class CurrencyUpdate(BaseModel):
+    currency: str  # "USD" or "RUB"
+
+
+class RouteUpdate(BaseModel):
+    airlines: list[str] | None = None
+    alliances: list[str] | None = None
+    cabin_types: list[str] | None = None
+    travelers: list[int] | None = None
+    departure_date: date | None = None
+    return_date: date | None = None
+    is_round_trip: bool | None = None
+
+
 class RouteCreate(BaseModel):
     origin: str
     destination: str

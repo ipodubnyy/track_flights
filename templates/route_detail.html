@@ -1,34 +1,41 @@
 {% extends "base.html" %}
-{% block title %}{{ route.origin }} → {{ route.destination }} | Flight Tracker{% endblock %}
+{% macro fmt_price(amount, cur) -%}
+    {%- set sym = CURRENCY_SYMBOLS.get(cur, ("$", "before")) -%}
+    {%- if sym[1] == "before" -%}{{ sym[0] }}{{ "%.0f" | format(amount) }}{%- else -%}{{ "%.0f" | format(amount) }}&nbsp;{{ sym[0] }}{%- endif -%}
+{%- endmacro %}
+{% macro cabin_name(key) %}{{ CABIN_DISPLAY_NAMES.get(key, key) }}{% endmacro %}
+
+{% block title %}{{ route.origin }} to {{ route.destination }} | Flight Tracker{% endblock %}
 {% block content %}
-<p><a href="/">&larr; Back to all routes</a></p>
+<a href="/" class="back-link">&larr; All Routes</a>
 
-<h1>{{ route.origin }} &rarr; {{ route.destination }}</h1>
+<div class="detail-header">
+    <h1>{{ route.origin }} &rarr; {{ route.destination }}</h1>
+    <span class="badge {{ 'badge-active' if route.is_active else 'badge-inactive' }}">{{ "Active" if route.is_active else "Paused" }}</span>
+</div>
 
-<div class="route-meta">
-    <p><strong>Departure:</strong> {{ route.departure_date }}</p>
-    {% if route.return_date %}<p><strong>Return:</strong> {{ route.return_date }}</p>{% endif %}
-    <p><strong>Type:</strong> {{ "Round Trip" if route.is_round_trip else "One Way" }}</p>
-    <p><strong>Cabin types:</strong> {{ route.cabin_types | join(", ") or "any" }}</p>
-    <p><strong>Airlines:</strong> {{ route.airlines | join(", ") or "any" }}</p>
-    <p><strong>Alliances:</strong> {{ route.alliances | join(", ") or "any" }}</p>
-    <p><strong>Travelers (ages):</strong> {{ route.travelers | join(", ") }}</p>
-    <p><strong>Status:</strong>
-        <span class="badge {{ 'badge-active' if route.is_active else 'badge-inactive' }}">
-            {{ "Active" if route.is_active else "Paused" }}
-        </span>
-    </p>
+<div class="detail-meta card">
+    <div class="meta-grid">
+        <div><span class="label">Departure</span><span class="value">{{ route.departure_date }}</span></div>
+        {% if route.return_date %}<div><span class="label">Return</span><span class="value">{{ route.return_date }}</span></div>{% endif %}
+        <div><span class="label">Type</span><span class="value">{{ "Round Trip" if route.is_round_trip else "One Way" }}</span></div>
+        <div><span class="label">Cabin</span><span class="value">{{ route.cabin_types | map('replace', 'economy_plus', 'Economy Plus') | map('replace', 'premium_economy', 'Premium Economy') | map('replace', 'business', 'Business') | map('replace', 'economy', 'Economy') | map('replace', 'first', 'First') | join(", ") or "Any" }}</span></div>
+        <div><span class="label">Airlines</span><span class="value">{{ route.airlines | join(", ") or "Any" }}</span></div>
+        <div><span class="label">Alliances</span><span class="value">{{ route.alliances | join(", ") or "Any" }}</span></div>
+        <div><span class="label">Travelers</span><span class="value">{{ route.travelers | join(", ") }} (ages)</span></div>
+    </div>
 </div>
 
 {% if route.latest_prices %}
 <div class="section">
-    <h2>Current Prices (total for all travelers)</h2>
+    <h2>Current Prices</h2>
+    <p class="section-subtitle">Total for all travelers. Your requested date is highlighted.</p>
     <div class="current-prices-grid">
         {% for p in route.latest_prices %}
-        <div class="current-price-card{% if p.departure_date and p.departure_date.isoformat() == route.departure_date.isoformat() %} current-price-exact{% endif %}">
-            <span class="label">{{ p.departure_date }} / {{ p.cabin_type }}</span>
-            <span class="current-price-amount">{{ "%.0f" | format(p.price) }} {{ p.currency }}</span>
-            <span class="current-price-airline">{{ p.airline }}</span>
+        <div class="price-card{% if p.departure_date and p.departure_date.isoformat() == route.departure_date.isoformat() %} price-card-exact{% endif %}">
+            <div class="price-card-date">{{ p.departure_date }}</div>
+            <div class="price-card-amount">{{ fmt_price(p.price, currency) }}</div>
+            <div class="price-card-detail">{{ cabin_name(p.cabin_type) }} &middot; {{ p.airline }}</div>
         </div>
         {% endfor %}
     </div>
@@ -36,26 +43,14 @@
 {% endif %}
 
 {% if route.latest_prediction %}
-<div class="prediction-card">
-    <h2>Latest Prediction</h2>
+<div class="prediction-card card">
+    <h2>AI Prediction</h2>
     <div class="prediction-grid">
-        <div>
-            <span class="label">Trend</span>
-            <span class="trend trend-{{ route.latest_prediction.trend }}">{{ route.latest_prediction.trend }}</span>
-        </div>
-        <div>
-            <span class="label">Recommendation</span>
-            <span class="value">{{ route.latest_prediction.buy_recommendation }}</span>
-        </div>
-        <div>
-            <span class="label">Confidence</span>
-            <span class="value">{{ "%.0f%%" | format(route.latest_prediction.confidence * 100) }}</span>
-        </div>
+        <div><span class="label">Trend</span><span class="trend trend-{{ route.latest_prediction.trend }}">{{ route.latest_prediction.trend | capitalize }}</span></div>
+        <div><span class="label">Recommendation</span><span class="value pred-rec">{{ route.latest_prediction.buy_recommendation }}</span></div>
+        <div><span class="label">Confidence</span><span class="value">{{ "%.0f%%" | format(route.latest_prediction.confidence * 100) }}</span></div>
         {% if route.latest_prediction.predicted_best_buy_date %}
-        <div>
-            <span class="label">Best buy date</span>
-            <span class="value">{{ route.latest_prediction.predicted_best_buy_date }}</span>
-        </div>
+        <div><span class="label">Best Buy Date</span><span class="value">{{ route.latest_prediction.predicted_best_buy_date }}</span></div>
         {% endif %}
     </div>
     <p class="prediction-summary">{{ route.latest_prediction.summary }}</p>
@@ -65,12 +60,13 @@
 <div class="section">
     <h2>Price History</h2>
     {% if all_prices %}
-    <div class="chart-container">
+    <div class="chart-container card">
         <canvas id="priceChart" height="250"></canvas>
     </div>
+    <div class="table-wrap card">
     <table>
         <thead>
-            <tr><th>Checked</th><th>Departure</th><th>Airline</th><th>Cabin</th><th>Total Price</th><th>Currency</th></tr>
+            <tr><th>Checked</th><th>Departure</th><th>Airline</th><th>Cabin</th><th>Total Price</th></tr>
         </thead>
         <tbody>
             {% for p in all_prices %}
@@ -78,21 +74,22 @@
                 <td>{{ p.fetched_at.strftime('%Y-%m-%d %H:%M') if p.fetched_at else 'N/A' }}</td>
                 <td>{{ p.departure_date or 'N/A' }}</td>
                 <td>{{ p.airline }}</td>
-                <td>{{ p.cabin_type }}</td>
-                <td>{{ "%.2f" | format(p.price) }}</td>
-                <td>{{ p.currency }}</td>
+                <td>{{ cabin_name(p.cabin_type) }}</td>
+                <td class="price-cell">{{ fmt_price(p.price, currency) }}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    </div>
     {% else %}
-    <p class="empty-state">No price data yet. Click "Check Prices Now" to fetch.</p>
+    <div class="empty-state">No price data yet. Click "Check Prices Now" to fetch.</div>
     {% endif %}
 </div>
 
+{% if all_predictions %}
 <div class="section">
     <h2>Prediction History</h2>
-    {% if all_predictions %}
+    <div class="table-wrap card">
     <table>
         <thead>
             <tr><th>Date</th><th>Trend</th><th>Summary</th><th>Recommendation</th><th>Confidence</th></tr>
@@ -101,7 +98,7 @@
             {% for pr in all_predictions %}
             <tr>
                 <td>{{ pr.created_at.strftime('%Y-%m-%d %H:%M') if pr.created_at else 'N/A' }}</td>
-                <td><span class="trend trend-{{ pr.trend }}">{{ pr.trend }}</span></td>
+                <td><span class="trend trend-{{ pr.trend }}">{{ pr.trend | capitalize }}</span></td>
                 <td>{{ pr.summary }}</td>
                 <td>{{ pr.buy_recommendation }}</td>
                 <td>{{ "%.0f%%" | format(pr.confidence * 100) }}</td>
@@ -109,18 +106,13 @@
             {% endfor %}
         </tbody>
     </table>
-    {% else %}
-    <p class="empty-state">No predictions yet.</p>
-    {% endif %}
+    </div>
 </div>
+{% endif %}
 
 <div class="actions-bar">
-    <button class="btn-primary" onclick="fetch('/api/routes/{{ route.id }}/check', {method:'POST'}).then(() => location.reload())">
-        Check Prices Now
-    </button>
-    <button onclick="fetch('/api/routes/{{ route.id }}/toggle', {method:'PATCH'}).then(() => location.reload())">
-        {{ "Pause" if route.is_active else "Resume" }}
-    </button>
+    <button class="btn btn-primary" onclick="fetch('/api/routes/{{ route.id }}/check', {method:'POST'}).then(() => location.reload())">Check Prices Now</button>
+    <button class="btn" onclick="fetch('/api/routes/{{ route.id }}/toggle', {method:'PATCH'}).then(() => location.reload())">{{ "Pause" if route.is_active else "Resume" }}</button>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
@@ -128,31 +120,53 @@
 document.addEventListener('DOMContentLoaded', function() {
     const prices = {{ all_prices | tojson }};
     if (!prices || prices.length === 0) return;
-
     const sorted = prices.slice().reverse();
     const labels = sorted.map(p => {
         const d = new Date(p.fetched_at);
         return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
     });
     const data = sorted.map(p => p.price);
-
+    const cur = '{{ currency }}';
+    const sym = cur === 'RUB' ? ' \u20BD' : '$';
     new Chart(document.getElementById('priceChart'), {
         type: 'line',
         data: {
             labels: labels,
             datasets: [{
-                label: 'Price (' + (sorted[0].currency || 'USD') + ')',
+                label: 'Price',
                 data: data,
-                borderColor: '#2563eb',
-                backgroundColor: 'rgba(37,99,235,0.1)',
+                borderColor: '#6366f1',
+                backgroundColor: 'rgba(99,102,241,0.08)',
                 fill: true,
-                tension: 0.3,
+                tension: 0.35,
+                pointRadius: 3,
+                pointBackgroundColor: '#6366f1',
             }]
         },
         options: {
             responsive: true,
-            plugins: { legend: { display: true } },
-            scales: { y: { beginAtZero: false } }
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            const v = ctx.parsed.y;
+                            return cur === 'RUB' ? v.toLocaleString() + ' \u20BD' : '$' + v.toLocaleString();
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    ticks: {
+                        callback: function(v) {
+                            return cur === 'RUB' ? v.toLocaleString() + ' \u20BD' : '$' + v.toLocaleString();
+                        }
+                    }
+                },
+                x: { display: false }
+            }
         }
     });
 });

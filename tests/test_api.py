@@ -2,7 +2,7 @@ import json
 from datetime import date, datetime
 from unittest.mock import MagicMock, patch
 
-from app.models import Prediction, PriceRecord, TrackedRoute
+from app.models import Prediction, PriceRecord, TrackedRoute, UserPreference
 from app.routers.api import _run_check_in_background
 
 
@@ -144,3 +144,85 @@ class TestGetRoutePredictions:
     def test_get_predictions_not_found(self, client):
         resp = client.get("/api/routes/9999/predictions")
         assert resp.status_code == 404
+
+
+class TestGetCurrency:
+    def test_get_currency_default(self, client, db_session):
+        resp = client.get("/api/currency")
+        assert resp.status_code == 200
+        assert resp.json()["currency"] == "USD"
+        # Should have created the preference row
+        assert db_session.query(UserPreference).count() == 1
+
+    def test_get_currency_existing(self, client, db_session):
+        db_session.add(UserPreference(id=1, currency="RUB"))
+        db_session.commit()
+        resp = client.get("/api/currency")
+        assert resp.status_code == 200
+        assert resp.json()["currency"] == "RUB"
+
+
+class TestSetCurrency:
+    def test_set_currency_usd(self, client, db_session):
+        resp = client.patch("/api/currency", json={"currency": "USD"})
+        assert resp.status_code == 200
+        assert resp.json()["currency"] == "USD"
+
+    def test_set_currency_rub(self, client, db_session):
+        resp = client.patch("/api/currency", json={"currency": "RUB"})
+        assert resp.status_code == 200
+        assert resp.json()["currency"] == "RUB"
+
+    def test_set_currency_existing_pref(self, client, db_session):
+        db_session.add(UserPreference(id=1, currency="USD"))
+        db_session.commit()
+        resp = client.patch("/api/currency", json={"currency": "RUB"})
+        assert resp.status_code == 200
+        assert resp.json()["currency"] == "RUB"
+
+    def test_set_currency_invalid(self, client, db_session):
+        resp = client.patch("/api/currency", json={"currency": "EUR"})
+        assert resp.status_code == 400
+
+
+class TestUpdateRoute:
+    def test_update_route_cabin_types(self, client, db_session, sample_route):
+        resp = client.patch(f"/api/routes/{sample_route.id}", json={"cabin_types": ["business"]})
+        assert resp.status_code == 200
+        assert resp.json()["cabin_types"] == ["business"]
+
+    def test_update_route_travelers(self, client, db_session, sample_route):
+        resp = client.patch(f"/api/routes/{sample_route.id}", json={"travelers": [35, 33, 5]})
+        assert resp.status_code == 200
+        assert resp.json()["travelers"] == [35, 33, 5]
+
+    def test_update_route_dates(self, client, db_session, sample_route):
+        resp = client.patch(f"/api/routes/{sample_route.id}", json={
+            "departure_date": "2026-07-01",
+            "return_date": "2026-07-10",
+            "is_round_trip": True,
+        })
+        assert resp.status_code == 200
+        assert resp.json()["departure_date"] == "2026-07-01"
+        assert resp.json()["return_date"] == "2026-07-10"
+
+    def test_update_route_airlines_alliances(self, client, db_session, sample_route):
+        resp = client.patch(f"/api/routes/{sample_route.id}", json={
+            "airlines": ["DL"],
+            "alliances": ["SkyTeam"],
+        })
+        assert resp.status_code == 200
+        assert resp.json()["airlines"] == ["DL"]
+        assert resp.json()["alliances"] == ["SkyTeam"]
+
+    def test_update_route_not_found(self, client):
+        resp = client.patch("/api/routes/9999", json={"travelers": [30]})
+        assert resp.status_code == 404
+
+    def test_update_route_partial(self, client, db_session, sample_route):
+        """Only the fields provided should change; others stay the same."""
+        original = client.get(f"/api/routes/{sample_route.id}").json()
+        resp = client.patch(f"/api/routes/{sample_route.id}", json={"travelers": [40]})
+        data = resp.json()
+        assert data["travelers"] == [40]
+        assert data["airlines"] == original["airlines"]  # unchanged

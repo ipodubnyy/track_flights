@@ -24,7 +24,7 @@ class PriceTracker:
         self.predictor = predictor
         self.notifier = notifier
 
-    def check_route(self, db: Session, route: TrackedRoute) -> None:
+    def check_route(self, db: Session, route: TrackedRoute, currency: str = "USD") -> None:
         cabin_types = route.get_cabin_types() or ["economy"]
         airlines = route.get_airlines()
         alliances = route.get_alliances()
@@ -61,6 +61,7 @@ class PriceTracker:
                     cabin_class=cabin,
                     airline_codes=airline_codes or None,
                     return_date=ret_date_str,
+                    currency=currency,
                 )
 
                 for r in results:
@@ -131,9 +132,13 @@ class PriceTracker:
         self.notifier.send_message(message)
 
     def check_all_routes(self, db: Session) -> None:
+        from app.models import UserPreference
+
+        pref = db.query(UserPreference).first()
+        currency = pref.currency if pref else "USD"
         routes = db.query(TrackedRoute).filter(TrackedRoute.is_active.is_(True)).all()
         for route in routes:
             try:
-                self.check_route(db, route)
+                self.check_route(db, route, currency=currency)
             except Exception:
                 logger.exception("Failed to check route %s", route.id)

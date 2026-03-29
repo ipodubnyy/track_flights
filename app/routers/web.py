@@ -4,10 +4,10 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import PriceRecord, Prediction, TrackedRoute
+from app.models import PriceRecord, Prediction, TrackedRoute, UserPreference
 from app.routers.api import _latest_prices_per_cabin
 from app.routers.auth import require_login
-from app.schemas import RouteResponse
+from app.schemas import CABIN_DISPLAY_NAMES, CURRENCY_SYMBOLS, RouteResponse
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -26,8 +26,18 @@ def index(request: Request, user: dict = Depends(require_login), db: Session = D
             .first()
         )
         routes.append(RouteResponse.from_model(r, prices, prediction))
+    pref = db.query(UserPreference).first()
+    currency = pref.currency if pref else "USD"
     return templates.TemplateResponse(
-        "index.html", {"request": request, "routes": routes, "user": user}
+        "index.html",
+        {
+            "request": request,
+            "routes": routes,
+            "user": user,
+            "currency": currency,
+            "CABIN_DISPLAY_NAMES": CABIN_DISPLAY_NAMES,
+            "CURRENCY_SYMBOLS": CURRENCY_SYMBOLS,
+        },
     )
 
 
@@ -50,12 +60,17 @@ def route_detail(route_id: int, request: Request, user: dict = Depends(require_l
         .all()
     )
     route = RouteResponse.from_model(route_orm, latest_prices, predictions[0] if predictions else None)
+    pref = db.query(UserPreference).first()
+    currency = pref.currency if pref else "USD"
     return templates.TemplateResponse(
         "route_detail.html",
         {
             "request": request,
             "route": route,
             "user": user,
+            "currency": currency,
+            "CABIN_DISPLAY_NAMES": CABIN_DISPLAY_NAMES,
+            "CURRENCY_SYMBOLS": CURRENCY_SYMBOLS,
             "all_prices": [
                 {
                     "id": p.id,

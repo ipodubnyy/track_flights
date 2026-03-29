@@ -1,133 +1,186 @@
 {% extends "base.html" %}
+{% macro fmt_price(amount, cur) -%}
+    {%- set sym = CURRENCY_SYMBOLS.get(cur, ("$", "before")) -%}
+    {%- if sym[1] == "before" -%}{{ sym[0] }}{{ "%.0f" | format(amount) }}{%- else -%}{{ "%.0f" | format(amount) }}&nbsp;{{ sym[0] }}{%- endif -%}
+{%- endmacro %}
+{% macro cabin_name(key) %}{{ CABIN_DISPLAY_NAMES.get(key, key) }}{% endmacro %}
+
 {% block title %}Flight Price Tracker{% endblock %}
 {% block content %}
-<h1>Tracked Routes</h1>
+<div class="page-header">
+    <h1>Tracked Routes</h1>
+</div>
 
 {% if routes %}
-<table>
-    <thead>
-        <tr>
-            <th>Route</th>
-            <th>Departure</th>
-            <th>Return</th>
-            <th>Cabin</th>
-            <th>Airlines / Alliances</th>
-            <th>Travelers</th>
-            <th>Status</th>
-            <th>Latest Prices (total)</th>
-            <th>Trend</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for r in routes %}
-        <tr>
-            <td><a href="/route/{{ r.id }}">{{ r.origin }} &rarr; {{ r.destination }}</a></td>
-            <td>{{ r.departure_date }}</td>
-            <td>{{ r.return_date or "-" }}</td>
-            <td>{{ r.cabin_types | join(", ") or "any" }}</td>
-            <td>
-                {% if r.airlines %}{{ r.airlines | join(", ") }}{% endif %}
-                {% if r.airlines and r.alliances %} / {% endif %}
-                {% if r.alliances %}{{ r.alliances | join(", ") }}{% endif %}
-                {% if not r.airlines and not r.alliances %}-{% endif %}
-            </td>
-            <td>{{ r.travelers | join(", ") }}</td>
-            <td>
-                <span class="badge {{ 'badge-active' if r.is_active else 'badge-inactive' }}">
-                    {{ "Active" if r.is_active else "Paused" }}
-                </span>
-            </td>
-            <td>
-                {% if r.latest_prices %}
-                    {% for p in r.latest_prices %}
-                    <div class="price-line">
-                        <span class="price-date">{{ p.departure_date }}</span>
-                        <span class="price-cabin">{{ p.cabin_type }}</span>
-                        <span class="price-amount">{{ "%.0f" | format(p.price) }} {{ p.currency }}</span>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    -
-                {% endif %}
-            </td>
-            <td>
-                {% if r.latest_prediction %}
-                    <span class="trend trend-{{ r.latest_prediction.trend }}">{{ r.latest_prediction.trend }}</span>
-                {% else %}
-                    -
-                {% endif %}
-            </td>
-            <td class="actions">
-                <button onclick="toggleRoute({{ r.id }})" title="Toggle active/paused">{{ "Pause" if r.is_active else "Resume" }}</button>
-                <button onclick="checkRoute({{ r.id }})" title="Check prices now">Check</button>
-                <button class="btn-danger" onclick="deleteRoute({{ r.id }})" title="Delete route">Delete</button>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="route-cards">
+    {% for r in routes %}
+    <div class="route-card">
+        <div class="route-card-header">
+            <a href="/route/{{ r.id }}" class="route-link">{{ r.origin }} &rarr; {{ r.destination }}</a>
+            <span class="badge {{ 'badge-active' if r.is_active else 'badge-inactive' }}">{{ "Active" if r.is_active else "Paused" }}</span>
+        </div>
+        <div class="route-card-meta">
+            <span>{{ r.departure_date }}{% if r.return_date %} &mdash; {{ r.return_date }}{% endif %}</span>
+            <span class="sep">|</span>
+            <span>{{ r.cabin_types | map('replace', 'economy_plus', 'Economy Plus') | map('replace', 'premium_economy', 'Premium Economy') | map('replace', 'business', 'Business') | map('replace', 'economy', 'Economy') | map('replace', 'first', 'First') | join(", ") or "Any cabin" }}</span>
+            <span class="sep">|</span>
+            <span>{{ r.travelers | length }} traveler{{ "s" if r.travelers | length != 1 }}</span>
+        </div>
+        {% if r.airlines or r.alliances %}
+        <div class="route-card-meta">
+            {% if r.airlines %}Airlines: {{ r.airlines | join(", ") }}{% endif %}
+            {% if r.alliances %}{% if r.airlines %} / {% endif %}{{ r.alliances | join(", ") }}{% endif %}
+        </div>
+        {% endif %}
+
+        {% if r.latest_prices %}
+        <div class="route-card-prices">
+            {% for p in r.latest_prices %}
+            <div class="price-chip">
+                <span class="price-chip-date">{{ p.departure_date }}</span>
+                <span class="price-chip-cabin">{{ cabin_name(p.cabin_type) }}</span>
+                <span class="price-chip-amount">{{ fmt_price(p.price, currency) }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if r.latest_prediction %}
+        <div class="route-card-trend">
+            <span class="trend trend-{{ r.latest_prediction.trend }}">{{ r.latest_prediction.trend | capitalize }}</span>
+            <span class="trend-rec">{{ r.latest_prediction.buy_recommendation }}</span>
+        </div>
+        {% endif %}
+
+        <div class="route-card-actions">
+            <button class="btn-sm" onclick="toggleRoute({{ r.id }})">{{ "Pause" if r.is_active else "Resume" }}</button>
+            <button class="btn-sm btn-primary" onclick="checkRoute({{ r.id }})">Check Now</button>
+            <button class="btn-sm" onclick="openEditModal({{ r.id }}, {
+                departure_date: '{{ r.departure_date }}',
+                return_date: '{{ r.return_date or '' }}',
+                is_round_trip: {{ 'true' if r.is_round_trip else 'false' }},
+                cabin_types: {{ r.cabin_types | tojson }},
+                airlines: {{ r.airlines | tojson }},
+                alliances: {{ r.alliances | tojson }},
+                travelers: {{ r.travelers | tojson }}
+            })">Edit</button>
+            <button class="btn-sm btn-danger" onclick="deleteRoute({{ r.id }})">Delete</button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
 {% else %}
-<p class="empty-state">No routes tracked yet. Add one below.</p>
+<div class="empty-state">
+    <p>No routes tracked yet. Add one below to get started.</p>
+</div>
 {% endif %}
 
+<div class="section-divider"></div>
+
 <h2>Add New Route</h2>
-<form id="addForm" onsubmit="return addRoute(event)">
-    <div class="form-grid">
+<form id="addForm" class="card" onsubmit="return addRoute(event)">
+    <div class="form-row">
         <div class="form-group">
-            <label for="origin">Origin (IATA code)</label>
-            <input type="text" id="origin" placeholder="e.g. SFO" maxlength="3" required>
+            <label for="origin">Origin</label>
+            <input type="text" id="origin" placeholder="SFO" maxlength="3" required>
         </div>
         <div class="form-group">
-            <label for="destination">Destination (IATA code)</label>
-            <input type="text" id="destination" placeholder="e.g. NRT" maxlength="3" required>
+            <label for="destination">Destination</label>
+            <input type="text" id="destination" placeholder="NRT" maxlength="3" required>
         </div>
         <div class="form-group">
-            <label for="departure_date">Departure Date</label>
+            <label for="departure_date">Departure</label>
             <input type="date" id="departure_date" required>
         </div>
         <div class="form-group">
-            <label for="return_date">Return Date</label>
+            <label for="return_date">Return</label>
             <input type="date" id="return_date">
         </div>
-        <div class="form-group">
-            <label>
-                <input type="checkbox" id="is_round_trip" onchange="toggleReturnDate()">
-                Round Trip
-            </label>
+        <div class="form-group form-group-check">
+            <label><input type="checkbox" id="is_round_trip" onchange="toggleReturnDate()"> Round Trip</label>
         </div>
     </div>
-
-    <div class="form-grid">
+    <div class="form-row">
         <div class="form-group">
-            <label for="cabin_types">Cabin Types</label>
+            <label>Cabin</label>
             <div class="checkbox-group">
-                <label><input type="checkbox" name="cabin" value="economy_plus"> Economy Plus</label>
-                <label><input type="checkbox" name="cabin" value="premium_economy"> Premium Economy</label>
-                <label><input type="checkbox" name="cabin" value="business"> Business</label>
+                <label class="chip-label"><input type="checkbox" name="cabin" value="economy_plus"> Economy Plus</label>
+                <label class="chip-label"><input type="checkbox" name="cabin" value="premium_economy"> Premium Economy</label>
+                <label class="chip-label"><input type="checkbox" name="cabin" value="business"> Business</label>
             </div>
         </div>
         <div class="form-group">
-            <label for="airlines">Airlines (IATA codes, comma-separated)</label>
-            <input type="text" id="airlines" placeholder="e.g. UA, LH, NH">
+            <label for="airlines">Airlines</label>
+            <input type="text" id="airlines" placeholder="UA, LH, NH">
         </div>
         <div class="form-group">
-            <label for="alliances">Alliances (comma-separated)</label>
-            <input type="text" id="alliances" placeholder="e.g. Star Alliance, oneworld">
+            <label for="alliances">Alliances</label>
+            <input type="text" id="alliances" placeholder="Star Alliance, oneworld">
         </div>
     </div>
-
     <div class="form-group">
         <label>Travelers</label>
         <div id="travelers-list">
             <div class="traveler-row">
-                <label>Age: <input type="number" name="traveler_age" value="30" min="0" max="120"></label>
-                <button type="button" class="btn-small" onclick="removeTraveler(this)">Remove</button>
+                <input type="number" name="traveler_age" value="30" min="0" max="120" placeholder="Age">
+                <button type="button" class="btn-sm btn-danger" onclick="removeTraveler(this)">Remove</button>
             </div>
         </div>
-        <button type="button" class="btn-small" onclick="addTraveler()">+ Add Traveler</button>
+        <button type="button" class="btn-sm" onclick="addTraveler()">+ Add Traveler</button>
     </div>
-
-    <button type="submit" class="btn-primary">Add Route</button>
+    <button type="submit" class="btn btn-primary">Add Route</button>
 </form>
+
+<!-- Edit Modal -->
+<div id="editModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeEditModal()">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Edit Route</h3>
+            <button class="btn-close" onclick="closeEditModal()">&times;</button>
+        </div>
+        <form id="editForm" onsubmit="return saveEdit(event)">
+            <input type="hidden" id="edit_route_id">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="edit_departure_date">Departure</label>
+                    <input type="date" id="edit_departure_date">
+                </div>
+                <div class="form-group">
+                    <label for="edit_return_date">Return</label>
+                    <input type="date" id="edit_return_date">
+                </div>
+                <div class="form-group form-group-check">
+                    <label><input type="checkbox" id="edit_is_round_trip"> Round Trip</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Cabin</label>
+                <div class="checkbox-group">
+                    <label class="chip-label"><input type="checkbox" name="edit_cabin" value="economy_plus"> Economy Plus</label>
+                    <label class="chip-label"><input type="checkbox" name="edit_cabin" value="premium_economy"> Premium Economy</label>
+                    <label class="chip-label"><input type="checkbox" name="edit_cabin" value="business"> Business</label>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="edit_airlines">Airlines</label>
+                    <input type="text" id="edit_airlines">
+                </div>
+                <div class="form-group">
+                    <label for="edit_alliances">Alliances</label>
+                    <input type="text" id="edit_alliances">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Travelers</label>
+                <div id="edit-travelers-list"></div>
+                <button type="button" class="btn-sm" onclick="addEditTraveler()">+ Add Traveler</button>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn" onclick="closeEditModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
 {% endblock %}
