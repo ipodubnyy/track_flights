@@ -32,7 +32,7 @@
         {% if r.latest_prices %}
         <div class="route-prices-block">
             {# Primary date prices + trend on same line #}
-            {% for p in r.latest_prices if p.departure_date and p.departure_date.isoformat() == primary_dep %}
+            {% for p in r.latest_prices if not p.departure_date or p.departure_date.isoformat() == primary_dep %}
             <div class="price-row primary">
                 <span class="price-chip-cabin">{{ cabin_name(p.cabin_type) }}</span>
                 <span class="price-chip-amount">{{ fmt_price(p.price, currency) }}</span>
@@ -47,7 +47,7 @@
             {% endif %}
             {# Nearby dates - hidden by default, toggle to show #}
             {% set nearby = [] %}
-            {% for p in r.latest_prices if not p.departure_date or p.departure_date.isoformat() != primary_dep %}
+            {% for p in r.latest_prices if p.departure_date and p.departure_date.isoformat() != primary_dep %}
                 {% if nearby.append(p) %}{% endif %}
             {% endfor %}
             {% if nearby %}

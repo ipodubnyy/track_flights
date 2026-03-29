@@ -34,7 +34,7 @@
 
     {# Primary date prices #}
     <div class="current-prices-grid">
-        {% for p in route.latest_prices if p.departure_date and p.departure_date.isoformat() == primary_dep %}
+        {% for p in route.latest_prices if not p.departure_date or p.departure_date.isoformat() == primary_dep %}
         <div class="price-card price-card-exact">
             <div class="price-card-date">{{ p.departure_date }} (requested)</div>
             <div class="price-card-amount">{{ fmt_price(p.price, currency) }}</div>
@@ -61,7 +61,7 @@
 
     {# Nearby date prices - shown on demand #}
     {% set nearby = [] %}
-    {% for p in route.latest_prices if not p.departure_date or p.departure_date.isoformat() != primary_dep %}
+    {% for p in route.latest_prices if p.departure_date and p.departure_date.isoformat() != primary_dep %}
         {% if nearby.append(p) %}{% endif %}
     {% endfor %}
     {% if nearby %}
