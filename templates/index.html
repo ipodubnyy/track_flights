@@ -40,7 +40,13 @@
             </td>
             <td>
                 {% if r.latest_prices %}
-                    {{ "%.0f" | format(r.latest_prices[0].price) }} {{ r.latest_prices[0].currency }}
+                    {% for p in r.latest_prices %}
+                    <div class="price-line">
+                        <span class="price-cabin">{{ p.cabin_type }}</span>
+                        <span class="price-amount">{{ "%.0f" | format(p.price) }} {{ p.currency }}</span>
+                        <span class="price-note">total</span>
+                    </div>
+                    {% endfor %}
                 {% else %}
                     -
                 {% endif %}

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import PriceRecord, Prediction, TrackedRoute
+from app.routers.api import _latest_prices_per_cabin
 from app.routers.auth import require_login
 from app.schemas import RouteResponse
 
@@ -17,13 +18,7 @@ def index(request: Request, user: dict = Depends(require_login), db: Session = D
     routes_orm = db.query(TrackedRoute).order_by(TrackedRoute.created_at.desc()).all()
     routes = []
     for r in routes_orm:
-        prices = (
-            db.query(PriceRecord)
-            .filter(PriceRecord.route_id == r.id)
-            .order_by(PriceRecord.fetched_at.desc())
-            .limit(5)
-            .all()
-        )
+        prices = _latest_prices_per_cabin(db, r.id)
         prediction = (
             db.query(Prediction)
             .filter(Prediction.route_id == r.id)
@@ -41,7 +36,8 @@ def route_detail(route_id: int, request: Request, user: dict = Depends(require_l
     route_orm = db.query(TrackedRoute).filter(TrackedRoute.id == route_id).first()
     if not route_orm:
         return HTMLResponse("Route not found", status_code=404)
-    prices = (
+    latest_prices = _latest_prices_per_cabin(db, route_orm.id)
+    all_prices = (
         db.query(PriceRecord)
         .filter(PriceRecord.route_id == route_orm.id)
         .order_by(PriceRecord.fetched_at.desc())
@@ -53,7 +49,7 @@ def route_detail(route_id: int, request: Request, user: dict = Depends(require_l
         .order_by(Prediction.created_at.desc())
         .all()
     )
-    route = RouteResponse.from_model(route_orm, prices, predictions[0] if predictions else None)
+    route = RouteResponse.from_model(route_orm, latest_prices, predictions[0] if predictions else None)
     return templates.TemplateResponse(
         "route_detail.html",
         {
@@ -69,7 +65,7 @@ def route_detail(route_id: int, request: Request, user: dict = Depends(require_l
                     "currency": p.currency,
                     "fetched_at": p.fetched_at,
                 }
-                for p in prices
+                for p in all_prices
             ],
             "all_predictions": [
                 {

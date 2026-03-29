@@ -16,6 +16,21 @@ from app.schemas import (
 router = APIRouter(prefix="/api", dependencies=[Depends(require_login)])
 
 
+def _latest_prices_per_cabin(db: Session, route_id: int) -> list[PriceRecord]:
+    """Return the most recent price record for each cabin_type on a route."""
+    all_prices = (
+        db.query(PriceRecord)
+        .filter(PriceRecord.route_id == route_id)
+        .order_by(PriceRecord.fetched_at.desc())
+        .all()
+    )
+    seen: dict[str, PriceRecord] = {}
+    for p in all_prices:
+        if p.cabin_type not in seen:
+            seen[p.cabin_type] = p
+    return list(seen.values())
+
+
 @router.post("/routes", response_model=RouteResponse)
 def create_route(payload: RouteCreate, db: Session = Depends(get_db)):
     route = TrackedRoute(
@@ -40,13 +55,7 @@ def list_routes(db: Session = Depends(get_db)):
     routes = db.query(TrackedRoute).order_by(TrackedRoute.created_at.desc()).all()
     result = []
     for route in routes:
-        prices = (
-            db.query(PriceRecord)
-            .filter(PriceRecord.route_id == route.id)
-            .order_by(PriceRecord.fetched_at.desc())
-            .limit(5)
-            .all()
-        )
+        prices = _latest_prices_per_cabin(db, route.id)
         prediction = (
             db.query(Prediction)
             .filter(Prediction.route_id == route.id)
@@ -62,12 +71,7 @@ def get_route(route_id: int, db: Session = Depends(get_db)):
     route = db.query(TrackedRoute).filter(TrackedRoute.id == route_id).first()
     if not route:
         raise HTTPException(status_code=404, detail="Route not found")
-    prices = (
-        db.query(PriceRecord)
-        .filter(PriceRecord.route_id == route.id)
-        .order_by(PriceRecord.fetched_at.desc())
-        .all()
-    )
+    prices = _latest_prices_per_cabin(db, route.id)
     prediction = (
         db.query(Prediction)
         .filter(Prediction.route_id == route.id)
@@ -107,13 +111,7 @@ def check_route(route_id: int, request: Request, db: Session = Depends(get_db)):
     price_tracker = request.app.state.price_tracker
     price_tracker.check_route(db, route)
 
-    prices = (
-        db.query(PriceRecord)
-        .filter(PriceRecord.route_id == route.id)
-        .order_by(PriceRecord.fetched_at.desc())
-        .limit(5)
-        .all()
-    )
+    prices = _latest_prices_per_cabin(db, route.id)
     prediction = (
         db.query(Prediction)
         .filter(Prediction.route_id == route.id)

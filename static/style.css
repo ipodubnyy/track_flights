@@ -112,6 +112,19 @@ button:hover { background: #f1f5f9; }
     margin: 12px 0;
 }
 
+/* Per-cabin price display in route list */
+.price-line { display: flex; align-items: baseline; gap: 6px; font-size: 0.85rem; margin: 2px 0; }
+.price-cabin { color: #64748b; font-size: 0.75rem; text-transform: capitalize; min-width: 80px; }
+.price-amount { font-weight: 600; }
+.price-note { color: #94a3b8; font-size: 0.7rem; }
+
+/* Current prices on detail page */
+.current-prices-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin: 8px 0; }
+.current-price-card { background: #fff; padding: 14px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); text-align: center; }
+.current-price-card .label { display: block; font-size: 0.75rem; color: #64748b; text-transform: capitalize; margin-bottom: 4px; }
+.current-price-amount { display: block; font-size: 1.3rem; font-weight: 700; color: #1e293b; }
+.current-price-airline { display: block; font-size: 0.8rem; color: #94a3b8; margin-top: 2px; }
+
 /* Form */
 .form-grid {
     display: grid;

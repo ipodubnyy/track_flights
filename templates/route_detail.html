@@ -20,6 +20,21 @@
     </p>
 </div>
 
+{% if route.latest_prices %}
+<div class="section">
+    <h2>Current Prices (total for all travelers)</h2>
+    <div class="current-prices-grid">
+        {% for p in route.latest_prices %}
+        <div class="current-price-card">
+            <span class="label">{{ p.cabin_type }}</span>
+            <span class="current-price-amount">{{ "%.0f" | format(p.price) }} {{ p.currency }}</span>
+            <span class="current-price-airline">{{ p.airline }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 {% if route.latest_prediction %}
 <div class="prediction-card">
     <h2>Latest Prediction</h2>
@@ -55,7 +70,7 @@
     </div>
     <table>
         <thead>
-            <tr><th>Date</th><th>Airline</th><th>Cabin</th><th>Price</th><th>Currency</th></tr>
+            <tr><th>Date</th><th>Airline</th><th>Cabin</th><th>Total Price</th><th>Currency</th></tr>
         </thead>
         <tbody>
             {% for p in all_prices %}
