@@ -3,26 +3,26 @@
     {%- set sym = CURRENCY_SYMBOLS.get(cur, ("$", "before")) -%}
     {%- if sym[1] == "before" -%}{{ sym[0] }}{{ "{:,.0f}".format(amount) }}{%- else -%}{{ "{:,.0f}".format(amount) }}&nbsp;{{ sym[0] }}{%- endif -%}
 {%- endmacro %}
-{% macro cabin_name(key) %}{{ CABIN_DISPLAY_NAMES.get(key, key) }}{% endmacro %}
+{% macro cabin_name(key) %}{{ t(key) }}{% endmacro %}
 
-{% block title %}{{ route.origin }} to {{ route.destination }} | Flight Tracker{% endblock %}
+{% block title %}{{ route.origin }} &rarr; {{ route.destination }} | {{ t('app_name') }}{% endblock %}
 {% block content %}
-<a href="/" class="back-link">&larr; All Routes</a>
+<a href="/" class="back-link">&larr; {{ t('all_routes') }}</a>
 
 <div class="detail-header">
     <h1>{{ route.origin }} &rarr; {{ route.destination }}</h1>
-    <span class="badge {{ 'badge-active' if route.is_active else 'badge-inactive' }}">{{ "Active" if route.is_active else "Paused" }}</span>
+    <span class="badge {{ 'badge-active' if route.is_active else 'badge-inactive' }}">{{ t('active') if route.is_active else t('paused') }}</span>
 </div>
 
 <div class="detail-meta card">
     <div class="meta-grid">
-        <div><span class="label">Departure</span><span class="value">{{ route.departure_date }}</span></div>
-        {% if route.return_date %}<div><span class="label">Return</span><span class="value">{{ route.return_date }}</span></div>{% endif %}
-        <div><span class="label">Type</span><span class="value">{{ "Round Trip" if route.is_round_trip else "One Way" }}</span></div>
-        <div><span class="label">Cabin</span><span class="value">{% for c in route.cabin_types %}{{ cabin_name(c) }}{% if not loop.last %}, {% endif %}{% endfor %}{% if not route.cabin_types %}Any{% endif %}</span></div>
-        <div><span class="label">Airlines</span><span class="value">{{ route.airlines | join(", ") or "Any" }}</span></div>
-        <div><span class="label">Alliances</span><span class="value">{{ route.alliances | join(", ") or "Any" }}</span></div>
-        <div><span class="label">Travelers</span><span class="value">{{ route.travelers | join(", ") }} (ages)</span></div>
+        <div><span class="label">{{ t('departure') }}</span><span class="value">{{ route.departure_date }}</span></div>
+        {% if route.return_date %}<div><span class="label">{{ t('return') }}</span><span class="value">{{ route.return_date }}</span></div>{% endif %}
+        <div><span class="label">{{ t('type') }}</span><span class="value">{{ t('round_trip') if route.is_round_trip else t('one_way') }}</span></div>
+        <div><span class="label">{{ t('cabin') }}</span><span class="value">{% for c in route.cabin_types %}{{ cabin_name(c) }}{% if not loop.last %}, {% endif %}{% endfor %}{% if not route.cabin_types %}{{ t('any') }}{% endif %}</span></div>
+        <div><span class="label">{{ t('airlines_label') }}</span><span class="value">{{ route.airlines | join(", ") or t('any') }}</span></div>
+        <div><span class="label">{{ t('alliances_label') }}</span><span class="value">{{ route.alliances | join(", ") or t('any') }}</span></div>
+        <div><span class="label">{{ t('travelers') }}</span><span class="value">{{ route.travelers | join(", ") }} ({{ t('ages') }})</span></div>
     </div>
 </div>
 
@@ -30,13 +30,12 @@
 
 {% if route.latest_prices %}
 <div class="section">
-    <h2>Current Prices</h2>
+    <h2>{{ t('current_prices') }}</h2>
 
-    {# Primary date prices #}
     <div class="current-prices-grid">
         {% for p in route.latest_prices if not p.departure_date or p.departure_date.isoformat() == primary_dep %}
         <div class="price-card price-card-exact">
-            <div class="price-card-date">{{ p.departure_date }} (requested)</div>
+            <div class="price-card-date">{{ p.departure_date }} ({{ t('requested') }})</div>
             <div class="price-card-amount">{{ fmt_price(p.price, currency) }}</div>
             <div class="price-card-detail">{{ cabin_name(p.cabin_type) }} &middot; {{ p.airline }}</div>
             {% if p.flight_info %}<div class="price-card-flight">{{ p.flight_info }}</div>{% endif %}
@@ -44,14 +43,13 @@
         {% endfor %}
     </div>
 
-    {# Prediction inline #}
     {% if route.latest_prediction %}
     <div class="inline-prediction">
-        <span class="trend trend-{{ route.latest_prediction.trend }}">{{ route.latest_prediction.trend | capitalize }}</span>
+        <span class="trend trend-{{ route.latest_prediction.trend }}">{{ t(route.latest_prediction.trend) }}</span>
         <span class="trend-rec">&mdash; {{ route.latest_prediction.buy_recommendation }}</span>
-        <span class="trend-confidence">({{ "%.0f%%" | format(route.latest_prediction.confidence * 100) }} confidence)</span>
+        <span class="trend-confidence">({{ "%.0f%%" | format(route.latest_prediction.confidence * 100) }} {{ t('confidence') }})</span>
         {% if route.latest_prediction.predicted_best_buy_date %}
-        <span class="trend-rec">&middot; Best buy: {{ route.latest_prediction.predicted_best_buy_date }}</span>
+        <span class="trend-rec">&middot; {{ t('best_buy') }}: {{ route.latest_prediction.predicted_best_buy_date }}</span>
         {% endif %}
     </div>
     {% if route.latest_prediction.summary %}
@@ -59,7 +57,6 @@
     {% endif %}
     {% endif %}
 
-    {# Nearby date prices - shown on demand #}
     {% set nearby = [] %}
     {% for p in route.latest_prices if p.departure_date and p.departure_date.isoformat() != primary_dep %}
         {% if nearby.append(p) %}{% endif %}
@@ -67,12 +64,12 @@
     {% if nearby %}
     <div class="nearby-section">
         <div class="nearby-header">
-            <h3 class="nearby-heading">Nearby dates</h3>
+            <h3 class="nearby-heading">{{ t('nearby_dates') }}</h3>
             <select class="nearby-select" onchange="toggleNearby(this, 'detail')">
-                <option value="0">Hidden</option>
-                <option value="1">&plusmn;1 day</option>
-                <option value="2">&plusmn;2 days</option>
-                <option value="3">&plusmn;3 days</option>
+                <option value="0">{{ t('hidden') }}</option>
+                <option value="1">{{ t('pm_1_day') }}</option>
+                <option value="2">{{ t('pm_2_days') }}</option>
+                <option value="3">{{ t('pm_3_days') }}</option>
             </select>
         </div>
         <div class="nearby-prices-grid" id="nearby-detail" style="display:none">
@@ -90,7 +87,7 @@
 {% endif %}
 
 <div class="section">
-    <h2>Price History</h2>
+    <h2>{{ t('price_history') }}</h2>
     {% if all_prices %}
     <div class="chart-container card">
         <canvas id="priceChart" height="250"></canvas>
@@ -98,7 +95,7 @@
     <div class="table-wrap card">
     <table>
         <thead>
-            <tr><th>Checked</th><th>Departure</th><th>Airline</th><th>Cabin</th><th>Total Price</th><th>Flight</th></tr>
+            <tr><th>{{ t('checked') }}</th><th>{{ t('departure') }}</th><th>{{ t('airlines_label') }}</th><th>{{ t('cabin') }}</th><th>{{ t('total_price') }}</th><th>{{ t('flight') }}</th></tr>
         </thead>
         <tbody>
             {% for p in all_prices %}
@@ -115,23 +112,23 @@
     </table>
     </div>
     {% else %}
-    <div class="empty-state">No price data yet. Click "Check Prices Now" to fetch.</div>
+    <div class="empty-state">{{ t('no_price_data') }}</div>
     {% endif %}
 </div>
 
 {% if all_predictions %}
 <div class="section">
-    <h2>Prediction History</h2>
+    <h2>{{ t('prediction_history') }}</h2>
     <div class="table-wrap card">
     <table>
         <thead>
-            <tr><th>Date</th><th>Trend</th><th>Summary</th><th>Recommendation</th><th>Confidence</th></tr>
+            <tr><th>{{ t('date') }}</th><th>{{ t('trend') }}</th><th>{{ t('summary') }}</th><th>{{ t('recommendation') }}</th><th>{{ t('confidence') }}</th></tr>
         </thead>
         <tbody>
             {% for pr in all_predictions %}
             <tr>
                 <td>{{ pr.created_at.strftime('%Y-%m-%d %H:%M') if pr.created_at else 'N/A' }}</td>
-                <td><span class="trend trend-{{ pr.trend }}">{{ pr.trend | capitalize }}</span></td>
+                <td><span class="trend trend-{{ pr.trend }}">{{ t(pr.trend) }}</span></td>
                 <td>{{ pr.summary }}</td>
                 <td>{{ pr.buy_recommendation }}</td>
                 <td>{{ "%.0f%%" | format(pr.confidence * 100) }}</td>
@@ -144,22 +141,22 @@
 {% endif %}
 
 <div class="actions-bar">
-    <button class="btn btn-primary" onclick="fetch('/api/routes/{{ route.id }}/check', {method:'POST'}).then(() => location.reload())">Check Prices Now</button>
-    <button class="btn" onclick="fetch('/api/routes/{{ route.id }}/toggle', {method:'PATCH'}).then(() => location.reload())">{{ "Pause" if route.is_active else "Resume" }}</button>
+    <button class="btn btn-primary" onclick="fetch('/api/routes/{{ route.id }}/check', {method:'POST',headers:{'x-csrf-token':getCsrfToken()}}).then(function(){location.reload()})">{{ t('check_prices_now') }}</button>
+    <button class="btn" onclick="fetch('/api/routes/{{ route.id }}/toggle', {method:'PATCH',headers:{'x-csrf-token':getCsrfToken()}}).then(function(){location.reload()})">{{ t('pause') if route.is_active else t('resume') }}</button>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const prices = {{ all_prices | tojson }};
+    var prices = {{ all_prices | tojson }};
     if (!prices || prices.length === 0) return;
-    const sorted = prices.slice().reverse();
-    const labels = sorted.map(p => {
-        const d = new Date(p.fetched_at);
+    var sorted = prices.slice().reverse();
+    var labels = sorted.map(function(p) {
+        var d = new Date(p.fetched_at);
         return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
     });
-    const data = sorted.map(p => p.price);
-    const cur = '{{ currency }}';
+    var data = sorted.map(function(p) { return p.price; });
+    var cur = '{{ currency }}';
     new Chart(document.getElementById('priceChart'), {
         type: 'line',
         data: {

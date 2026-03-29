@@ -227,6 +227,33 @@ def set_currency(payload: CurrencyUpdate, db: Session = Depends(get_db)):
     return {"currency": pref.currency}
 
 
+@router.get("/language")
+def get_language(db: Session = Depends(get_db)):
+    pref = db.query(UserPreference).first()
+    if not pref:
+        pref = UserPreference(id=1, language="en")
+        db.add(pref)
+        db.commit()
+        db.refresh(pref)
+    return {"language": pref.language}
+
+
+@router.patch("/language")
+def set_language(payload: dict, db: Session = Depends(get_db)):
+    lang = payload.get("language", "en")
+    if lang not in ("en", "ru"):
+        raise HTTPException(status_code=400, detail="Unsupported language")
+    pref = db.query(UserPreference).first()
+    if not pref:
+        pref = UserPreference(id=1, language=lang)
+        db.add(pref)
+    else:
+        pref.language = lang
+    db.commit()
+    db.refresh(pref)
+    return {"language": pref.language}
+
+
 @router.patch("/routes/{route_id}", response_model=RouteResponse)
 def update_route(route_id: int, payload: RouteUpdate, db: Session = Depends(get_db)):
     route = db.query(TrackedRoute).filter(TrackedRoute.id == route_id).first()

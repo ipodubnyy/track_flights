@@ -217,6 +217,43 @@ class TestSetCurrency:
         assert resp.status_code == 400
 
 
+class TestGetLanguage:
+    def test_get_language_default(self, client, db_session):
+        resp = client.get("/api/language")
+        assert resp.status_code == 200
+        assert resp.json()["language"] == "en"
+
+    def test_get_language_existing(self, client, db_session):
+        db_session.add(UserPreference(id=1, language="ru"))
+        db_session.commit()
+        resp = client.get("/api/language")
+        assert resp.status_code == 200
+        assert resp.json()["language"] == "ru"
+
+
+class TestSetLanguage:
+    def test_set_language_en(self, client, db_session):
+        resp = client.patch("/api/language", json={"language": "en"})
+        assert resp.status_code == 200
+        assert resp.json()["language"] == "en"
+
+    def test_set_language_ru(self, client, db_session):
+        resp = client.patch("/api/language", json={"language": "ru"})
+        assert resp.status_code == 200
+        assert resp.json()["language"] == "ru"
+
+    def test_set_language_existing_pref(self, client, db_session):
+        db_session.add(UserPreference(id=1, language="en"))
+        db_session.commit()
+        resp = client.patch("/api/language", json={"language": "ru"})
+        assert resp.status_code == 200
+        assert resp.json()["language"] == "ru"
+
+    def test_set_language_invalid(self, client, db_session):
+        resp = client.patch("/api/language", json={"language": "fr"})
+        assert resp.status_code == 400
+
+
 class TestUpdateRoute:
     def test_update_route_cabin_types(self, client, db_session, sample_route):
         resp = client.patch(f"/api/routes/{sample_route.id}", json={"cabin_types": ["business"]})

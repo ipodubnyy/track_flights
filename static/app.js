@@ -10,6 +10,16 @@ document.addEventListener('click', function(e) {
     });
 });
 
+/* Language toggle */
+async function setLanguage(lang) {
+    await fetch('/api/language', {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json', 'x-csrf-token': getCsrfToken()},
+        body: JSON.stringify({language: lang}),
+    });
+    location.reload();
+}
+
 /* Currency toggle - changes preference, reloads to show converted prices */
 async function setCurrency(cur) {
     await fetch('/api/currency', {

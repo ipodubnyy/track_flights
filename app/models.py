@@ -103,3 +103,4 @@ class UserPreference(Base):
 
     id = Column(Integer, primary_key=True, default=1)
     currency = Column(String, default="USD")  # "USD" or "RUB"
+    language = Column(String, default="en")  # "en" or "ru"

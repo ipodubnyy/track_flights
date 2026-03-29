@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models import PriceRecord, Prediction, TrackedRoute, UserPreference
 from app.routers.api import _latest_prices_per_cabin
 from app.routers.auth import require_login
+from app.i18n import get_t
 from app.schemas import CABIN_DISPLAY_NAMES, CURRENCY_SYMBOLS, RouteResponse, convert_price
 
 router = APIRouter()
@@ -26,6 +27,8 @@ def index(request: Request, user: dict = Depends(require_login), db: Session = D
     routes_orm = db.query(TrackedRoute).order_by(TrackedRoute.created_at.desc()).all()
     pref = db.query(UserPreference).first()
     currency = pref.currency if pref else "USD"
+    lang = pref.language if pref and pref.language else "en"
+    _t = get_t(lang)
     routes = []
     route_histories: dict[int, list] = {}
     for r in routes_orm:
@@ -70,6 +73,8 @@ def index(request: Request, user: dict = Depends(require_login), db: Session = D
             "route_histories": route_histories,
             "CABIN_DISPLAY_NAMES": CABIN_DISPLAY_NAMES,
             "CURRENCY_SYMBOLS": CURRENCY_SYMBOLS,
+            "lang": lang,
+            "t": _t,
         },
     )
 
@@ -94,6 +99,8 @@ def route_detail(route_id: int, request: Request, user: dict = Depends(require_l
     )
     pref = db.query(UserPreference).first()
     currency = pref.currency if pref else "USD"
+    lang = pref.language if pref and pref.language else "en"
+    _t = get_t(lang)
     route = RouteResponse.from_model(route_orm, latest_prices, predictions[0] if predictions else None)
     _convert_route_prices(route, currency)
     return templates.TemplateResponse(
@@ -105,6 +112,8 @@ def route_detail(route_id: int, request: Request, user: dict = Depends(require_l
             "currency": currency,
             "CABIN_DISPLAY_NAMES": CABIN_DISPLAY_NAMES,
             "CURRENCY_SYMBOLS": CURRENCY_SYMBOLS,
+            "lang": lang,
+            "t": _t,
             "all_prices": [
                 {
                     "id": p.id,

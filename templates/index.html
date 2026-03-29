@@ -3,12 +3,12 @@
     {%- set sym = CURRENCY_SYMBOLS.get(cur, ("$", "before")) -%}
     {%- if sym[1] == "before" -%}{{ sym[0] }}{{ "{:,.0f}".format(amount) }}{%- else -%}{{ "{:,.0f}".format(amount) }}&nbsp;{{ sym[0] }}{%- endif -%}
 {%- endmacro %}
-{% macro cabin_name(key) %}{{ CABIN_DISPLAY_NAMES.get(key, key) }}{% endmacro %}
+{% macro cabin_name(key) %}{{ t(key) }}{% endmacro %}
 
 {% block title %}Flight Price Tracker{% endblock %}
 {% block content %}
 <div class="page-header">
-    <h1>Tracked Routes</h1>
+    <h1>{{ t('tracked_routes') }}</h1>
 </div>
 
 {% if routes %}
@@ -17,14 +17,14 @@
     <div class="route-card">
         <div class="route-card-header">
             <a href="/route/{{ r.id }}" class="route-link">{{ r.origin }} &rarr; {{ r.destination }}</a>
-            <span class="badge {{ 'badge-active' if r.is_active else 'badge-inactive' }}">{{ "Active" if r.is_active else "Paused" }}</span>
+            <span class="badge {{ 'badge-active' if r.is_active else 'badge-inactive' }}">{{ t('active') if r.is_active else t('paused') }}</span>
         </div>
         <div class="route-card-meta">
             <span>{{ r.departure_date }}{% if r.return_date %} &mdash; {{ r.return_date }}{% endif %}</span>
             <span class="sep">|</span>
-            <span>{% for c in r.cabin_types %}{{ cabin_name(c) }}{% if not loop.last %}, {% endif %}{% endfor %}{% if not r.cabin_types %}Any cabin{% endif %}</span>
+            <span>{% for c in r.cabin_types %}{{ cabin_name(c) }}{% if not loop.last %}, {% endif %}{% endfor %}{% if not r.cabin_types %}{{ t('any_cabin') }}{% endif %}</span>
             <span class="sep">|</span>
-            <span>{{ r.travelers | length }} traveler{{ "s" if r.travelers | length != 1 }}</span>
+            <span>{{ r.travelers | length }} {{ t('travelers_s') if r.travelers | length != 1 else t('traveler_s') }}</span>
         </div>
 
         {# Two-column layout: prices left, chart right #}
@@ -54,10 +54,10 @@
                     {% if nearby %}
                     <div class="nearby-toggle">
                         <select class="nearby-select" onchange="toggleNearby(this, {{ r.id }})">
-                            <option value="0">Nearby dates: hidden</option>
-                            <option value="1">&plusmn;1 day</option>
-                            <option value="2">&plusmn;2 days</option>
-                            <option value="3">&plusmn;3 days</option>
+                            <option value="0">{{ t('nearby_hidden') }}</option>
+                            <option value="1">{{ t('pm_1_day') }}</option>
+                            <option value="2">{{ t('pm_2_days') }}</option>
+                            <option value="3">{{ t('pm_3_days') }}</option>
                         </select>
                     </div>
                     <div class="nearby-prices" id="nearby-{{ r.id }}" style="display:none">
@@ -75,124 +75,124 @@
         </div>
 
         <div class="route-card-actions">
-            <button class="btn-sm" onclick="toggleRoute({{ r.id }})">{{ "Pause" if r.is_active else "Resume" }}</button>
-            <button class="btn-sm btn-primary" onclick="checkRoute({{ r.id }})">Check Now</button>
-            <button class="btn-sm" data-route-id="{{ r.id }}" data-route='{{ {"departure_date": r.departure_date|string, "return_date": (r.return_date|string if r.return_date else ""), "is_round_trip": r.is_round_trip, "cabin_types": r.cabin_types, "airlines": r.airlines, "alliances": r.alliances, "travelers": r.travelers} | tojson }}' onclick="openEditModal(this)">Edit</button>
-            <button class="btn-sm btn-danger" onclick="deleteRoute({{ r.id }})">Delete</button>
+            <button class="btn-sm" onclick="toggleRoute({{ r.id }})">{{ t('pause') if r.is_active else t('resume') }}</button>
+            <button class="btn-sm btn-primary" onclick="checkRoute({{ r.id }})">{{ t('check_now') }}</button>
+            <button class="btn-sm" data-route-id="{{ r.id }}" data-route='{{ {"departure_date": r.departure_date|string, "return_date": (r.return_date|string if r.return_date else ""), "is_round_trip": r.is_round_trip, "cabin_types": r.cabin_types, "airlines": r.airlines, "alliances": r.alliances, "travelers": r.travelers} | tojson }}' onclick="openEditModal(this)">{{ t('edit') }}</button>
+            <button class="btn-sm btn-danger" onclick="deleteRoute({{ r.id }})">{{ t('delete') }}</button>
         </div>
     </div>
     {% endfor %}
 </div>
 {% else %}
 <div class="empty-state">
-    <p>No routes tracked yet. Add one below to get started.</p>
+    <p>{{ t('no_routes_yet') }}</p>
 </div>
 {% endif %}
 
 <div class="section-divider"></div>
 
-<h2>Add New Route</h2>
+<h2>{{ t('add_new_route') }}</h2>
 <form id="addForm" class="card" onsubmit="return addRoute(event)">
     <div class="form-row">
         <div class="form-group">
-            <label for="origin">Origin</label>
+            <label for="origin">{{ t('origin') }}</label>
             <input type="text" id="origin" placeholder="SFO" maxlength="3" required>
         </div>
         <div class="form-group">
-            <label for="destination">Destination</label>
+            <label for="destination">{{ t('destination') }}</label>
             <input type="text" id="destination" placeholder="NRT" maxlength="3" required>
         </div>
         <div class="form-group">
-            <label for="departure_date">Departure</label>
+            <label for="departure_date">{{ t('departure') }}</label>
             <input type="date" id="departure_date" required>
         </div>
         <div class="form-group">
-            <label for="return_date">Return</label>
+            <label for="return_date">{{ t('return') }}</label>
             <input type="date" id="return_date">
         </div>
         <div class="form-group form-group-check">
-            <label><input type="checkbox" id="is_round_trip" onchange="toggleReturnDate()"> Round Trip</label>
+            <label><input type="checkbox" id="is_round_trip" onchange="toggleReturnDate()"> {{ t('round_trip') }}</label>
         </div>
     </div>
     <div class="form-row">
         <div class="form-group">
-            <label>Cabin</label>
+            <label>{{ t('cabin') }}</label>
             <div class="checkbox-group">
-                <label class="chip-label"><input type="checkbox" name="cabin" value="economy_plus"> Economy Plus</label>
-                <label class="chip-label"><input type="checkbox" name="cabin" value="premium_economy"> Premium Economy</label>
-                <label class="chip-label"><input type="checkbox" name="cabin" value="business"> Business</label>
+                <label class="chip-label"><input type="checkbox" name="cabin" value="economy_plus"> {{ t('economy_plus') }}</label>
+                <label class="chip-label"><input type="checkbox" name="cabin" value="premium_economy"> {{ t('premium_economy') }}</label>
+                <label class="chip-label"><input type="checkbox" name="cabin" value="business"> {{ t('business') }}</label>
             </div>
         </div>
         <div class="form-group">
-            <label for="airlines">Airlines</label>
+            <label for="airlines">{{ t('airlines_label') }}</label>
             <input type="text" id="airlines" placeholder="UA, LH, NH">
         </div>
         <div class="form-group">
-            <label for="alliances">Alliances</label>
+            <label for="alliances">{{ t('alliances_label') }}</label>
             <input type="text" id="alliances" placeholder="Star Alliance, oneworld">
         </div>
     </div>
     <div class="form-group">
-        <label>Travelers</label>
+        <label>{{ t('travelers') }}</label>
         <div id="travelers-list">
             <div class="traveler-row">
                 <input type="number" name="traveler_age" value="30" min="0" max="120" placeholder="Age">
-                <button type="button" class="btn-sm btn-danger" onclick="removeTraveler(this)">Remove</button>
+                <button type="button" class="btn-sm btn-danger" onclick="removeTraveler(this)">{{ t('remove') }}</button>
             </div>
         </div>
-        <button type="button" class="btn-sm" onclick="addTraveler()">+ Add Traveler</button>
+        <button type="button" class="btn-sm" onclick="addTraveler()">{{ t('add_traveler') }}</button>
     </div>
-    <button type="submit" class="btn btn-primary">Add Route</button>
+    <button type="submit" class="btn btn-primary">{{ t('add_route_btn') }}</button>
 </form>
 
 <!-- Edit Modal -->
 <div id="editModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeEditModal()">
     <div class="modal">
         <div class="modal-header">
-            <h3>Edit Route</h3>
+            <h3>{{ t('edit_route') }}</h3>
             <button class="btn-close" onclick="closeEditModal()">&times;</button>
         </div>
         <form id="editForm" onsubmit="return saveEdit(event)">
             <input type="hidden" id="edit_route_id">
             <div class="form-row">
                 <div class="form-group">
-                    <label for="edit_departure_date">Departure</label>
+                    <label for="edit_departure_date">{{ t('departure') }}</label>
                     <input type="date" id="edit_departure_date">
                 </div>
                 <div class="form-group">
-                    <label for="edit_return_date">Return</label>
+                    <label for="edit_return_date">{{ t('return') }}</label>
                     <input type="date" id="edit_return_date">
                 </div>
                 <div class="form-group form-group-check">
-                    <label><input type="checkbox" id="edit_is_round_trip"> Round Trip</label>
+                    <label><input type="checkbox" id="edit_is_round_trip"> {{ t('round_trip') }}</label>
                 </div>
             </div>
             <div class="form-group">
-                <label>Cabin</label>
+                <label>{{ t('cabin') }}</label>
                 <div class="checkbox-group" id="edit-cabin-group">
-                    <label class="chip-label"><input type="checkbox" name="edit_cabin" value="economy_plus"> Economy Plus</label>
-                    <label class="chip-label"><input type="checkbox" name="edit_cabin" value="premium_economy"> Premium Economy</label>
-                    <label class="chip-label"><input type="checkbox" name="edit_cabin" value="business"> Business</label>
+                    <label class="chip-label"><input type="checkbox" name="edit_cabin" value="economy_plus"> {{ t('economy_plus') }}</label>
+                    <label class="chip-label"><input type="checkbox" name="edit_cabin" value="premium_economy"> {{ t('premium_economy') }}</label>
+                    <label class="chip-label"><input type="checkbox" name="edit_cabin" value="business"> {{ t('business') }}</label>
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label for="edit_airlines">Airlines</label>
+                    <label for="edit_airlines">{{ t('airlines_label') }}</label>
                     <input type="text" id="edit_airlines">
                 </div>
                 <div class="form-group">
-                    <label for="edit_alliances">Alliances</label>
+                    <label for="edit_alliances">{{ t('alliances_label') }}</label>
                     <input type="text" id="edit_alliances">
                 </div>
             </div>
             <div class="form-group">
-                <label>Travelers (ages)</label>
+                <label>{{ t('travelers_ages') }}</label>
                 <div id="edit-travelers-list"></div>
-                <button type="button" class="btn-sm" onclick="addEditTraveler()">+ Add Traveler</button>
+                <button type="button" class="btn-sm" onclick="addEditTraveler()">{{ t('add_traveler') }}</button>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn" onclick="closeEditModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="button" class="btn" onclick="closeEditModal()">{{ t('cancel') }}</button>
+                <button type="submit" class="btn btn-primary">{{ t('save_changes') }}</button>
             </div>
         </form>
     </div>

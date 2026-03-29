@@ -69,6 +69,20 @@ class TestLoginPage:
             assert resp.status_code == 200
             assert "Sign in with Google" in resp.text
 
+    def test_login_page_russian(self):
+        app = self._make_app()
+        with TestClient(app) as c:
+            resp = c.get("/login?lang=ru")
+            assert resp.status_code == 200
+            assert "Войти через Google" in resp.text
+
+    def test_login_page_invalid_lang_defaults_en(self):
+        app = self._make_app()
+        with TestClient(app) as c:
+            resp = c.get("/login?lang=xx")
+            assert resp.status_code == 200
+            assert "Sign in with Google" in resp.text
+
     @patch("app.routers.auth.oauth")
     def test_login_page_redirects_when_logged_in(self, mock_oauth):
         mock_google = AsyncMock()

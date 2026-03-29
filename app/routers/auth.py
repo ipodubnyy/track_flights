@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
 from app.database import get_db
+from app.i18n import get_t
 from app.models import Prediction, PriceRecord, TrackedRoute, UserPreference
 
 router = APIRouter()
@@ -42,11 +43,14 @@ class _LoginRequired(Exception):
 
 
 @router.get("/login", response_class=HTMLResponse)
-def login_page(request: Request):
+def login_page(request: Request, lang: str = "en"):
     user = request.session.get("user")
     if user:
         return RedirectResponse(url="/", status_code=302)
-    return templates.TemplateResponse("login.html", {"request": request})
+    if lang not in ("en", "ru"):
+        lang = "en"
+    _t = get_t(lang)
+    return templates.TemplateResponse("login.html", {"request": request, "lang": lang, "t": _t})
 
 
 @router.get("/login/google")
@@ -65,9 +69,10 @@ async def auth_callback(request: Request, settings: Settings = Depends(get_setti
     if allowed:
         allowed_list = [e.strip().lower() for e in allowed.split(",") if e.strip()]
         if email.lower() not in allowed_list:
+            _t = get_t("en")
             return templates.TemplateResponse(
                 "login.html",
-                {"request": request, "error": f"Access denied for {email}"},
+                {"request": request, "error": f"{_t('access_denied_for')} {email}", "lang": "en", "t": _t},
                 status_code=403,
             )
 
