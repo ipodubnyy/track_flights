@@ -7,7 +7,7 @@ echo "=== Deploying Flight Price Tracker ==="
 
 # Install system deps
 sudo apt-get update -qq
-sudo apt-get install -y -qq python3 python3-venv python3-pip nginx
+sudo apt-get install -y -qq python3 python3-venv python3-pip nginx certbot python3-certbot-dns-route53
 
 # Create app directory
 sudo mkdir -p "$APP_DIR"
@@ -30,17 +30,19 @@ if [ ! -f "$APP_DIR/.env" ]; then
     echo "WARNING: .env copied from example. Edit /opt/track_flights/.env with real credentials."
 fi
 
-# Generate self-signed SSL cert if not present
-if [ ! -f /etc/ssl/track_flights/server.crt ]; then
-    sudo mkdir -p /etc/ssl/track_flights
-    sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
-        -keyout /etc/ssl/track_flights/server.key \
-        -out /etc/ssl/track_flights/server.crt \
-        -subj '/CN=flights.cattom.net/O=TrackFlights/C=US' \
-        -addext 'subjectAltName=DNS:flights.cattom.net'
-    sudo chmod 600 /etc/ssl/track_flights/server.key
-    echo "SSL certificate generated."
+# Issue Let's Encrypt cert via DNS-01 (Route53) if not present
+if [ ! -f /etc/letsencrypt/live/flights.cattom.net/fullchain.pem ]; then
+    sudo certbot certonly --dns-route53 -d flights.cattom.net \
+        --non-interactive --agree-tos -m admin@cattom.net
+    echo "Let's Encrypt certificate issued."
 fi
+# Ensure auto-renewal reloads nginx
+sudo tee /etc/letsencrypt/renewal-hooks/post/reload-nginx.sh > /dev/null << 'HOOK'
+#!/bin/bash
+systemctl reload nginx
+HOOK
+sudo chmod +x /etc/letsencrypt/renewal-hooks/post/reload-nginx.sh
+sudo systemctl enable --now certbot.timer
 
 # Setup nginx - HTTPS only on port 5498, remove any default HTTP listeners
 sudo cp "$APP_DIR/deploy/nginx.conf" /etc/nginx/sites-available/track_flights
