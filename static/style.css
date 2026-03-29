@@ -10,7 +10,16 @@ body {
 nav {
     background: #1e293b;
     padding: 12px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
+
+.nav-user { display: flex; align-items: center; gap: 10px; }
+.nav-user .avatar { width: 28px; height: 28px; border-radius: 50%; }
+.nav-user .nav-name { color: #cbd5e1; font-size: 0.85rem; }
+.nav-user .nav-logout { color: #94a3b8; font-size: 0.85rem; text-decoration: none; margin-left: 4px; }
+.nav-user .nav-logout:hover { color: #fff; }
 
 nav .logo {
     color: #fff;

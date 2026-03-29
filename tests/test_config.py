@@ -12,6 +12,10 @@ class TestSettings:
         assert s.FLIGHTAPI_KEY == ""
         assert s.DATABASE_URL == "sqlite:///./track_flights.db"
         assert s.CHECK_INTERVAL_HOURS == 6
+        assert s.GOOGLE_CLIENT_ID == ""
+        assert s.GOOGLE_CLIENT_SECRET == ""
+        assert s.SECRET_KEY == "change-me-to-a-random-secret"
+        assert s.ALLOWED_EMAILS == ""
 
     def test_custom_values(self):
         s = Settings(
@@ -21,10 +25,16 @@ class TestSettings:
             TELEGRAM_CHAT_ID="123",
             DATABASE_URL="sqlite:///test.db",
             CHECK_INTERVAL_HOURS=12,
+            GOOGLE_CLIENT_ID="gcid",
+            GOOGLE_CLIENT_SECRET="gsec",
+            SECRET_KEY="mysecret",
+            ALLOWED_EMAILS="a@b.com,c@d.com",
         )
         assert s.FLIGHTAPI_KEY == "fkey"
         assert s.DATABASE_URL == "sqlite:///test.db"
         assert s.CHECK_INTERVAL_HOURS == 12
+        assert s.GOOGLE_CLIENT_ID == "gcid"
+        assert s.ALLOWED_EMAILS == "a@b.com,c@d.com"
 
 
 class TestGetSettings:

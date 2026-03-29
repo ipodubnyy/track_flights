@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import PriceRecord, Prediction, TrackedRoute
+from app.routers.auth import require_login
 from app.schemas import (
     PredictionResponse,
     PriceResponse,
@@ -12,7 +13,7 @@ from app.schemas import (
     RouteResponse,
 )
 
-router = APIRouter(prefix="/api")
+router = APIRouter(prefix="/api", dependencies=[Depends(require_login)])
 
 
 @router.post("/routes", response_model=RouteResponse)

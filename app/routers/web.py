@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import PriceRecord, Prediction, TrackedRoute
+from app.routers.auth import require_login
 from app.schemas import RouteResponse
 
 router = APIRouter()
@@ -12,7 +13,7 @@ templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/", response_class=HTMLResponse)
-def index(request: Request, db: Session = Depends(get_db)):
+def index(request: Request, user: dict = Depends(require_login), db: Session = Depends(get_db)):
     routes_orm = db.query(TrackedRoute).order_by(TrackedRoute.created_at.desc()).all()
     routes = []
     for r in routes_orm:
@@ -31,12 +32,12 @@ def index(request: Request, db: Session = Depends(get_db)):
         )
         routes.append(RouteResponse.from_model(r, prices, prediction))
     return templates.TemplateResponse(
-        "index.html", {"request": request, "routes": routes}
+        "index.html", {"request": request, "routes": routes, "user": user}
     )
 
 
 @router.get("/route/{route_id}", response_class=HTMLResponse)
-def route_detail(route_id: int, request: Request, db: Session = Depends(get_db)):
+def route_detail(route_id: int, request: Request, user: dict = Depends(require_login), db: Session = Depends(get_db)):
     route_orm = db.query(TrackedRoute).filter(TrackedRoute.id == route_id).first()
     if not route_orm:
         return HTMLResponse("Route not found", status_code=404)
@@ -58,6 +59,7 @@ def route_detail(route_id: int, request: Request, db: Session = Depends(get_db))
         {
             "request": request,
             "route": route,
+            "user": user,
             "all_prices": [
                 {
                     "id": p.id,

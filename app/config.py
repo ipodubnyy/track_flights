@@ -10,6 +10,10 @@ class Settings(BaseSettings):
     TELEGRAM_CHAT_ID: str = ""
     DATABASE_URL: str = "sqlite:///./track_flights.db"
     CHECK_INTERVAL_HOURS: int = 6
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    SECRET_KEY: str = "change-me-to-a-random-secret"
+    ALLOWED_EMAILS: str = ""  # comma-separated; empty = allow all Google accounts
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 

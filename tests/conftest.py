@@ -12,6 +12,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.database import Base, get_db
 from app.models import Prediction, PriceRecord, TrackedRoute
+from app.routers.auth import require_login
 
 
 @pytest.fixture()
@@ -60,9 +61,12 @@ def client(override_get_db):
         app_instance.state.price_tracker = mock_tracker
         yield
 
+    fake_user = {"email": "test@example.com", "name": "Test User", "picture": ""}
+
     original_lifespan = app.router.lifespan_context
     app.router.lifespan_context = test_lifespan
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[require_login] = lambda: fake_user
 
     with TestClient(app, raise_server_exceptions=False) as c:
         yield c
