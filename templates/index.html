@@ -24,7 +24,7 @@
             <span class="sep">|</span>
             <span>{% for c in r.cabin_types %}{{ cabin_name(c) }}{% if not loop.last %}, {% endif %}{% endfor %}{% if not r.cabin_types %}{{ t('any_cabin') }}{% endif %}</span>
             <span class="sep">|</span>
-            <span>{{ r.travelers | length }} {{ t('travelers_s') if r.travelers | length != 1 else t('traveler_s') }}</span>
+            <span>{{ r.travelers | length }} {{ t.plural(r.travelers | length, 'traveler') }}</span>
         </div>
 
         {# Two-column layout: prices left, chart right #}

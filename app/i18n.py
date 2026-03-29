@@ -55,6 +55,11 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "pm_2_days": {"en": "\u00b12 days", "ru": "\u00b12 дня"},
     "pm_3_days": {"en": "\u00b13 days", "ru": "\u00b13 дня"},
 
+    # Plural forms handled by plural() function, these are fallbacks
+    "traveler_1": {"en": "traveler", "ru": "пассажир"},
+    "traveler_2": {"en": "travelers", "ru": "пассажира"},
+    "traveler_5": {"en": "travelers", "ru": "пассажиров"},
+
     # Route detail
     "all_routes": {"en": "All Routes", "ru": "Все маршруты"},
     "type": {"en": "Type", "ru": "Тип"},
@@ -96,7 +101,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "prices_shown_in_usd": {"en": "Prices are shown in US Dollars ($). Totals include all travelers.", "ru": "Цены указаны в долларах США ($). Итого включает всех пассажиров."},
     "prices_shown_in_rub": {"en": "Prices are shown in Russian Rubles (\u20bd). Totals include all travelers.", "ru": "Цены указаны в российских рублях (\u20bd). Итого включает всех пассажиров."},
 
-    # Traveler count
+    # Traveler count (for pluralization, see plural() function)
     "traveler_s": {"en": "traveler", "ru": "пассажир"},
     "travelers_s": {"en": "travelers", "ru": "пассажиров"},
 
@@ -112,8 +117,41 @@ def t(key: str, lang: str = "en") -> str:
     return entry.get(lang, entry.get("en", key))
 
 
+def _ru_plural_form(n: int) -> int:
+    """Return 0 for '1 пассажир', 1 for '2 пассажира', 2 for '5 пассажиров'."""
+    abs_n = abs(n)
+    if abs_n % 10 == 1 and abs_n % 100 != 11:
+        return 0
+    if 2 <= abs_n % 10 <= 4 and not (12 <= abs_n % 100 <= 14):
+        return 1
+    return 2
+
+
+# Russian plural forms: (1-form, 2-4-form, 5+-form)
+_RU_PLURALS = {
+    "traveler": ("пассажир", "пассажира", "пассажиров"),
+    "day": ("день", "дня", "дней"),
+}
+
+
+def plural(n: int, word: str, lang: str = "en") -> str:
+    """Return correct plural form for a number."""
+    if lang == "ru" and word in _RU_PLURALS:
+        forms = _RU_PLURALS[word]
+        return forms[_ru_plural_form(n)]
+    # English: simple s/no-s
+    if lang == "en":
+        if word == "traveler":
+            return "traveler" if n == 1 else "travelers"
+        if word == "day":
+            return "day" if n == 1 else "days"
+    return word
+
+
 def get_t(lang: str):
     """Return a translation function bound to a language."""
     def _t(key: str) -> str:
         return t(key, lang)
+    _t.plural = lambda n, word: plural(n, word, lang)
+    _t.lang = lang
     return _t
