@@ -146,6 +146,27 @@ class TestFormatPriceAlert:
         assert "??" in msg
         assert "0" in msg
 
+    def test_format_with_google_flights_source(self):
+        route = MagicMock()
+        route.origin = "JFK"
+        route.destination = "FRA"
+        route.departure_date = date(2026, 6, 15)
+        route.return_date = None
+
+        prices = [
+            {
+                "airline": "UA",
+                "cabin_type": "economy",
+                "price": 500.0,
+                "currency": "USD",
+                "source": "google_flights",
+            },
+        ]
+        prediction = {"trend": "stable", "summary": "ok", "buy_recommendation": "uncertain", "confidence": 0.5}
+        notifier = TelegramNotifier("", "")
+        msg = notifier.format_price_alert(route, prices, prediction)
+        assert "[G]" in msg
+
     def test_format_with_flight_info_and_departure_date(self):
         route = MagicMock()
         route.origin = "JFK"

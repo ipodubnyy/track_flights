@@ -10,6 +10,7 @@ class TestSettings:
             TELEGRAM_CHAT_ID="",
         )
         assert s.FLIGHTAPI_KEY == ""
+        assert s.SERPAPI_KEY == ""
         assert s.DATABASE_URL == "sqlite:///./track_flights.db"
         assert s.CHECK_INTERVAL_HOURS == 4
         assert s.GOOGLE_CLIENT_ID == ""

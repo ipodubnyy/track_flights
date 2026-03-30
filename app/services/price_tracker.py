@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from datetime import date, timedelta
 
@@ -5,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models import PriceRecord, Prediction, TrackedRoute
 from app.services.amadeus_client import FlightApiClient
+from app.services.google_flights_client import GoogleFlightsClient
 from app.services.notifier import TelegramNotifier
 from app.services.predictor import PricePredictor
 
@@ -19,10 +22,12 @@ class PriceTracker:
         amadeus: FlightApiClient,
         predictor: PricePredictor,
         notifier: TelegramNotifier,
+        google_flights: GoogleFlightsClient | None = None,
     ) -> None:
         self.amadeus = amadeus
         self.predictor = predictor
         self.notifier = notifier
+        self.google_flights = google_flights
 
     def check_route(self, db: Session, route: TrackedRoute, currency: str = "USD") -> None:
         cabin_types = route.get_cabin_types() or ["economy"]
@@ -64,6 +69,23 @@ class PriceTracker:
                     currency=currency,
                 )
 
+                # Fallback to Google Flights if FlightAPI returned nothing
+                if not results and self.google_flights:
+                    logger.info("FlightAPI empty for %s->%s %s %s, trying Google Flights",
+                                route.origin, route.destination, dep_date, cabin)
+                    results = self.google_flights.search_flights(
+                        origin=route.origin,
+                        destination=route.destination,
+                        departure_date=dep_date.isoformat(),
+                        adults=adults,
+                        children=children,
+                        infants=infants,
+                        cabin_class=cabin,
+                        airline_codes=airline_codes or None,
+                        return_date=ret_date_str,
+                        currency=currency,
+                    )
+
                 for r in results:
                     record = PriceRecord(
                         route_id=route.id,
@@ -73,6 +95,7 @@ class PriceTracker:
                         price=r.get("price", 0),
                         currency=r.get("currency", "USD"),
                         flight_info=r.get("flight_info", ""),
+                        source=r.get("source", "flightapi"),
                     )
                     db.add(record)
                     all_prices.append({**r, "departure_date": dep_date.isoformat()})

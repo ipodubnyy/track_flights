@@ -57,6 +57,7 @@ class TestSearchFlights:
         assert results[0]["currency"] == "USD"
         assert results[0]["cabin_type"] == "economy"
         assert results[0]["flight_info"] == "AA123"
+        assert results[0]["source"] == "flightapi"
 
     @respx.mock
     def test_search_roundtrip(self):
@@ -295,6 +296,7 @@ class TestSearchFlights:
         assert results[0]["flight_info"] == "UA100, UA200 via ORD"
         assert results[0]["airline"] == "UA"
         assert results[0]["currency"] == "USD"
+        assert results[0]["source"] == "flightapi"
 
     def test_parse_response_segment_missing_carrier(self):
         """Segment with no matching carrier_id should not produce flight part."""

@@ -148,6 +148,7 @@ class PriceResponse(BaseModel):
     price: float
     currency: str
     flight_info: str = ""
+    source: str = "flightapi"
     fetched_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

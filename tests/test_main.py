@@ -98,6 +98,7 @@ class TestLifespan:
     @patch("app.main.start_scheduler")
     @patch("app.main.TelegramNotifier")
     @patch("app.main.PricePredictor")
+    @patch("app.main.GoogleFlightsClient")
     @patch("app.main.FlightApiClient")
     @patch("app.main.setup_oauth")
     @patch("app.main.Base")
@@ -110,6 +111,7 @@ class TestLifespan:
         mock_base,
         mock_setup_oauth,
         mock_flight_api_cls,
+        mock_google_flights_cls,
         mock_predictor_cls,
         mock_notifier_cls,
         mock_start_scheduler,
@@ -117,6 +119,7 @@ class TestLifespan:
     ):
         settings = MagicMock()
         settings.FLIGHTAPI_KEY = "fkey"
+        settings.SERPAPI_KEY = "serpkey"
         settings.GROK_API_KEY = "grok"
         settings.TELEGRAM_BOT_TOKEN = "bot"
         settings.TELEGRAM_CHAT_ID = "chat"
@@ -133,6 +136,7 @@ class TestLifespan:
             mock_base.metadata.create_all.assert_called_once()
             mock_setup_oauth.assert_called_once_with(settings)
             mock_flight_api_cls.assert_called_once_with("fkey")
+            mock_google_flights_cls.assert_called_once_with("serpkey")
             mock_predictor_cls.assert_called_once_with("grok")
             mock_notifier_cls.assert_called_once_with("bot", "chat")
             mock_start_scheduler.assert_called_once()
@@ -147,6 +151,7 @@ class TestLifespan:
     @patch("app.main.start_scheduler")
     @patch("app.main.TelegramNotifier")
     @patch("app.main.PricePredictor")
+    @patch("app.main.GoogleFlightsClient")
     @patch("app.main.FlightApiClient")
     @patch("app.main.setup_oauth")
     @patch("app.main.Base")
@@ -159,6 +164,7 @@ class TestLifespan:
         mock_base,
         mock_setup_oauth,
         mock_flight_api_cls,
+        mock_google_flights_cls,
         mock_predictor_cls,
         mock_notifier_cls,
         mock_start_scheduler,
@@ -166,6 +172,7 @@ class TestLifespan:
     ):
         settings = MagicMock()
         settings.FLIGHTAPI_KEY = "fkey"
+        settings.SERPAPI_KEY = ""
         settings.GROK_API_KEY = "grok"
         settings.TELEGRAM_BOT_TOKEN = "bot"
         settings.TELEGRAM_CHAT_ID = "chat"

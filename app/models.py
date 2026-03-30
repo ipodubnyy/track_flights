@@ -78,6 +78,7 @@ class PriceRecord(Base):
     price = Column(Float, nullable=False)
     currency = Column(String, default="USD")
     flight_info = Column(String, default="")  # e.g. "UA123" or "UA123 via ORD"
+    source = Column(String, default="flightapi")  # "flightapi" or "google_flights"
     fetched_at = Column(DateTime, default=func.now())
 
     route = relationship("TrackedRoute", back_populates="price_records")

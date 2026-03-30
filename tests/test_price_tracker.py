@@ -264,6 +264,101 @@ class TestCheckRoute:
         assert first_call_kwargs["departure_date"] == today.isoformat()
 
 
+    def test_check_route_google_flights_fallback(self, db_session):
+        """When amadeus returns empty and google_flights is available, fallback is used."""
+        route = TrackedRoute(
+            origin="JFK",
+            destination="FRA",
+            departure_date=date(2026, 6, 15),
+            return_date=None,
+            is_round_trip=False,
+            airlines="[]",
+            alliances="[]",
+            cabin_types="[]",
+            travelers="[30]",
+            is_active=True,
+            created_at=datetime(2026, 1, 1),
+        )
+        db_session.add(route)
+        db_session.commit()
+        db_session.refresh(route)
+
+        amadeus = MagicMock()
+        amadeus.search_flights.return_value = []
+        amadeus.resolve_airline_codes.return_value = []
+
+        google_flights = MagicMock()
+        google_flights.search_flights.return_value = [
+            {"airline": "UA", "price": 500.0, "currency": "USD", "cabin_type": "economy", "source": "google_flights"},
+        ]
+
+        predictor = MagicMock()
+        predictor.predict.return_value = {
+            "trend": "stable", "summary": "ok",
+            "buy_recommendation": "uncertain",
+            "predicted_best_buy_date": None, "confidence": 0.0,
+        }
+
+        notifier = MagicMock()
+        notifier.format_price_alert.return_value = "msg"
+
+        tracker = PriceTracker(amadeus, predictor, notifier, google_flights=google_flights)
+        tracker.check_route(db_session, route)
+
+        # Google flights should have been called as fallback
+        assert google_flights.search_flights.call_count == 7  # 7 date offsets
+        prices = db_session.query(PriceRecord).filter(PriceRecord.route_id == route.id).all()
+        assert len(prices) == 7
+        assert all(p.source == "google_flights" for p in prices)
+
+    def test_check_route_no_google_fallback_when_amadeus_has_results(self, db_session):
+        """When amadeus returns results, google_flights fallback is NOT called."""
+        route = TrackedRoute(
+            origin="JFK",
+            destination="FRA",
+            departure_date=date(2026, 6, 15),
+            return_date=None,
+            is_round_trip=False,
+            airlines="[]",
+            alliances="[]",
+            cabin_types="[]",
+            travelers="[30]",
+            is_active=True,
+            created_at=datetime(2026, 1, 1),
+        )
+        db_session.add(route)
+        db_session.commit()
+        db_session.refresh(route)
+
+        amadeus = MagicMock()
+        amadeus.search_flights.return_value = [
+            {"airline": "AA", "price": 350.0, "currency": "USD", "cabin_type": "economy", "source": "flightapi"},
+        ]
+        amadeus.resolve_airline_codes.return_value = []
+
+        google_flights = MagicMock()
+        google_flights.search_flights.return_value = []
+
+        predictor = MagicMock()
+        predictor.predict.return_value = {
+            "trend": "stable", "summary": "ok",
+            "buy_recommendation": "uncertain",
+            "predicted_best_buy_date": None, "confidence": 0.0,
+        }
+
+        notifier = MagicMock()
+        notifier.format_price_alert.return_value = "msg"
+
+        tracker = PriceTracker(amadeus, predictor, notifier, google_flights=google_flights)
+        tracker.check_route(db_session, route)
+
+        # Google flights should NOT have been called
+        google_flights.search_flights.assert_not_called()
+        prices = db_session.query(PriceRecord).filter(PriceRecord.route_id == route.id).all()
+        assert len(prices) == 7
+        assert all(p.source == "flightapi" for p in prices)
+
+
 class TestCheckAllRoutes:
     def test_check_all_routes(self, db_session):
         for i in range(3):

@@ -115,6 +115,7 @@ class TestRouteResponse:
         mock_price.price = 350.0
         mock_price.currency = "USD"
         mock_price.flight_info = "AA123"
+        mock_price.source = "flightapi"
         mock_price.fetched_at = datetime(2026, 1, 1, 12, 0, 0)
 
         mock_pred = MagicMock()

@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     FLIGHTAPI_KEY: str = ""
+    SERPAPI_KEY: str = ""
     GROK_API_KEY: str = ""
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_CHAT_ID: str = ""

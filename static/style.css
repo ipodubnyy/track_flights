@@ -152,6 +152,8 @@ tr:last-child td { border-bottom: none; }
 .row-primary { background: #eef2ff; }
 .price-cell { font-weight: 600; }
 .flight-cell { font-size: 0.75rem; color: var(--subtle); }
+.source-cell { width: 24px; }
+.source-badge { display: inline-block; width: 18px; height: 18px; line-height: 18px; text-align: center; border-radius: 4px; font-size: 0.65rem; font-weight: 700; background: #dbeafe; color: #1d4ed8; }
 
 .chart-container { padding: 16px; }
 .actions-bar { display: flex; gap: 8px; margin-top: 20px; }

@@ -14,6 +14,7 @@ from app.database import Base, engine, get_db
 from app.routers import api, auth, web
 from app.routers.auth import _LoginRequired, setup_oauth
 from app.services.amadeus_client import FlightApiClient
+from app.services.google_flights_client import GoogleFlightsClient
 from app.services.notifier import TelegramNotifier
 from app.services.predictor import PricePredictor
 from app.services.price_tracker import PriceTracker
@@ -41,9 +42,12 @@ async def lifespan(app: FastAPI):
         logger.warning("Failed to fetch exchange rate, using cached")
 
     amadeus = FlightApiClient(settings.FLIGHTAPI_KEY)
+    google_flights = GoogleFlightsClient(settings.SERPAPI_KEY) if settings.SERPAPI_KEY else None
+    if google_flights:
+        logger.info("Google Flights fallback enabled (SerpAPI)")
     predictor = PricePredictor(settings.GROK_API_KEY)
     notifier = TelegramNotifier(settings.TELEGRAM_BOT_TOKEN, settings.TELEGRAM_CHAT_ID)
-    price_tracker = PriceTracker(amadeus, predictor, notifier)
+    price_tracker = PriceTracker(amadeus, predictor, notifier, google_flights=google_flights)
 
     app.state.price_tracker = price_tracker
 

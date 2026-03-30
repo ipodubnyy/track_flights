@@ -56,6 +56,8 @@ class TelegramNotifier:
                 line += f" ({flight_info})"
             if p.get('departure_date'):
                 line += f" [dep {p.get('departure_date')}]"
+            if p.get('source') == 'google_flights':
+                line += " [G]"
             lines.append(line)
 
         lines.append("")

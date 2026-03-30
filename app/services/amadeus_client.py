@@ -147,6 +147,7 @@ class FlightApiClient:
                 "currency": currency,
                 "cabin_type": cabin_type,
                 "flight_info": flight_str,
+                "source": "flightapi",
             })
 
         return results

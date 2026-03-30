@@ -123,6 +123,7 @@ def route_detail(route_id: int, request: Request, user: dict = Depends(require_l
                     "price": convert_price(p.price, p.currency or "USD", currency),
                     "currency": currency,
                     "flight_info": p.flight_info or "",
+                    "source": p.source or "flightapi",
                     "fetched_at": p.fetched_at,
                 }
                 for p in all_prices_orm

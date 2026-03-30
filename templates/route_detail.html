@@ -95,7 +95,7 @@
     <div class="table-wrap card">
     <table>
         <thead>
-            <tr><th>{{ t('checked') }}</th><th>{{ t('departure') }}</th><th>{{ t('airlines_label') }}</th><th>{{ t('cabin') }}</th><th>{{ t('total_price') }}</th><th>{{ t('flight') }}</th></tr>
+            <tr><th>{{ t('checked') }}</th><th>{{ t('departure') }}</th><th>{{ t('airlines_label') }}</th><th>{{ t('cabin') }}</th><th>{{ t('total_price') }}</th><th>{{ t('flight') }}</th><th></th></tr>
         </thead>
         <tbody>
             {% for p in all_prices %}
@@ -106,6 +106,7 @@
                 <td>{{ cabin_name(p.cabin_type) }}</td>
                 <td class="price-cell">{{ fmt_price(p.price, currency) }}</td>
                 <td class="flight-cell">{{ p.flight_info or '' }}</td>
+                <td class="source-cell">{% if p.source == 'google_flights' %}<span class="source-badge">G</span>{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>
