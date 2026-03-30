@@ -24,12 +24,12 @@
 </head>
 <body>
     <nav>
-        <span class="logo"><img src="/static/logo.png" alt="{{ t('app_name') }}" class="logo-img"></span>
+        <span class="logo"><img src="/static/logo.png" alt="{{ t('app_name') }}" class="logo-img"><span class="logo-text">{{ t('app_name') }}</span></span>
     </nav>
     <main>
         <div class="login-container">
             <div class="login-card">
-                <h1>{{ t('welcome') }}</h1>
+                <h1>{{ t('welcome_to') }}</h1>
                 <p>{{ t('sign_in_prompt') }}</p>
                 {% if error %}
                 <div class="error">{{ error }}</div>

@@ -9,6 +9,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
 
     # Login
     "welcome": {"en": "Welcome", "ru": "Добро пожаловать"},
+    "welcome_to": {"en": "Welcome to Flight Tracker", "ru": "Добро пожаловать в Трекер Авиабилетов"},
     "sign_in_prompt": {"en": "Sign in to track flight prices", "ru": "Войдите, чтобы отслеживать цены на авиабилеты"},
     "sign_in_google": {"en": "Sign in with Google", "ru": "Войти через Google"},
     "access_denied_for": {"en": "Access denied for", "ru": "Доступ запрещён для"},

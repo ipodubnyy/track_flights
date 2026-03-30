@@ -13,6 +13,7 @@ body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); c
 nav { background: #0f172a; padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 50; }
 .logo { color: #fff; text-decoration: none; font-size: 1rem; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; }
 .logo-img { height: 40px; width: auto; display: block; }
+.logo-text { margin-left: 8px; }
 .nav-right { display: flex; align-items: center; gap: 16px; }
 
 .lang-toggle, .currency-toggle { display: flex; gap: 2px; background: rgba(255,255,255,0.08); border-radius: 6px; padding: 2px; }
