@@ -161,21 +161,21 @@ document.addEventListener('DOMContentLoaded', function() {
     var sorted = prices.slice().reverse();
     var cur = '{{ currency }}';
 
-    /* Group by airline */
-    var airlineData = {};
+    /* Group by airline + cabin */
+    var groupedData = {};
     sorted.forEach(function(p) {
-        var key = p.airline;
-        if (!airlineData[key]) airlineData[key] = [];
-        airlineData[key].push(p);
+        var key = p.airline + ' / ' + p.cabin_type;
+        if (!groupedData[key]) groupedData[key] = [];
+        groupedData[key].push(p);
     });
 
-    var airlines = Object.keys(airlineData);
+    var groups = Object.keys(groupedData);
     var datasets = [];
-    airlines.forEach(function(airline, idx) {
-        var points = airlineData[airline];
+    groups.forEach(function(group, idx) {
+        var points = groupedData[group];
         var color = AIRLINE_COLORS[idx % AIRLINE_COLORS.length];
         datasets.push({
-            label: airline,
+            label: group,
             data: points.map(function(p) { return { x: p.fetched_at, y: p.price }; }),
             borderColor: color,
             backgroundColor: color + '18',
@@ -194,7 +194,7 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             plugins: {
                 legend: {
-                    display: airlines.length > 1,
+                    display: groups.length > 1,
                     position: 'bottom',
                     labels: { boxWidth: 12, font: { size: 11 }, padding: 12 }
                 },
