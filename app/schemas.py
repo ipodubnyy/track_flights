@@ -103,11 +103,10 @@ class RouteCreate(BaseModel):
 
     @field_validator("origin", "destination")
     @classmethod
-    def validate_iata(cls, v: str) -> str:
-        v = v.strip().upper()
-        if not v.isalpha() or len(v) != 3:
-            raise ValueError("Must be a 3-letter IATA code")
-        return v
+    def validate_airport(cls, v: str) -> str:
+        from app.services.airport_lookup import resolve_airport
+
+        return resolve_airport(v)
 
     @field_validator("cabin_types")
     @classmethod

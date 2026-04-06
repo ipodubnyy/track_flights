@@ -20,6 +20,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "add_new_route": {"en": "Add New Route", "ru": "Добавить маршрут"},
     "origin": {"en": "Origin", "ru": "Откуда"},
     "destination": {"en": "Destination", "ru": "Куда"},
+    "origin_placeholder": {"en": "SFO or San Francisco, US", "ru": "SVO или Москва, Россия"},
+    "destination_placeholder": {"en": "NRT or Tokyo, Japan", "ru": "NRT или Токио, Япония"},
     "departure": {"en": "Departure", "ru": "Вылет"},
     "return": {"en": "Return", "ru": "Возврат"},
     "round_trip": {"en": "Round Trip", "ru": "Туда-обратно"},

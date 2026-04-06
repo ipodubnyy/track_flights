@@ -217,19 +217,19 @@ class TestRouteCreateValidateIata:
         assert rc.destination == "LAX"
 
     def test_invalid_iata_too_long(self):
-        with pytest.raises(ValidationError, match="3-letter IATA"):
+        with pytest.raises(ValidationError, match="No airports found"):
             RouteCreate(origin="JFKX", destination="LAX", departure_date="2026-06-15")
 
     def test_invalid_iata_numbers(self):
-        with pytest.raises(ValidationError, match="3-letter IATA"):
+        with pytest.raises(ValidationError, match="No airports found"):
             RouteCreate(origin="J2K", destination="LAX", departure_date="2026-06-15")
 
     def test_invalid_iata_empty(self):
-        with pytest.raises(ValidationError, match="3-letter IATA"):
+        with pytest.raises(ValidationError, match="Airport code or city name is required"):
             RouteCreate(origin="", destination="LAX", departure_date="2026-06-15")
 
     def test_invalid_iata_two_letters(self):
-        with pytest.raises(ValidationError, match="3-letter IATA"):
+        with pytest.raises(ValidationError, match="Unknown IATA code"):
             RouteCreate(origin="JF", destination="LAX", departure_date="2026-06-15")
 
 

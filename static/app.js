@@ -43,8 +43,8 @@ async function addRoute(e) {
     var ages = [];
     document.querySelectorAll('#addForm input[name="traveler_age"]').forEach(function(inp) { ages.push(parseInt(inp.value) || 30); });
     var body = {
-        origin: document.getElementById('origin').value.toUpperCase(),
-        destination: document.getElementById('destination').value.toUpperCase(),
+        origin: document.getElementById('origin').value.trim(),
+        destination: document.getElementById('destination').value.trim(),
         departure_date: document.getElementById('departure_date').value,
         return_date: document.getElementById('return_date').value || null,
         is_round_trip: document.getElementById('is_round_trip').checked,

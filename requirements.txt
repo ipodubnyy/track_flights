@@ -6,6 +6,7 @@ apscheduler==3.11.0
 jinja2==3.1.5
 python-multipart==0.0.20
 python-dotenv==1.0.1
+airportsdata>=20240001
 pydantic-settings==2.7.1
 authlib==1.4.1
 itsdangerous==2.2.0

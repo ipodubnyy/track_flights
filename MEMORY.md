@@ -1,0 +1,1 @@
+- [Project overview](../../.claude/projects/-Users-ipoddubnyy-src-vibe-track-flights/memory/project_overview.md) — FastAPI flight price tracker with Google OAuth, Telegram alerts, i18n
